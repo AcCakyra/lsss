@@ -4,7 +4,6 @@ import com.accakyra.lsss.lsm.LSMProperties;
 import com.accakyra.lsss.lsm.store.MemTable;
 import com.accakyra.lsss.lsm.store.MetaData;
 import com.accakyra.lsss.lsm.store.SST;
-import com.accakyra.lsss.lsm.util.FileNameUtil;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -17,6 +16,7 @@ public class TableWriter {
     private final ExecutorService writer;
     private final File data;
     private final MetaData metaData;
+    private Future<?> flushTaskResult;
 
     public TableWriter(MetaData metaData, File data) {
         this.data = data;
@@ -25,9 +25,10 @@ public class TableWriter {
     }
 
     public void scheduleFlushing(MemTable memtable) {
+        waitUntilTableIsFlushed();
         SST sstable = convertMemTableToSSTable(memtable);
         WriteSSTableTask writeSSTableTask = new WriteSSTableTask(sstable, data.toPath(), metaData);
-        writer.submit(writeSSTableTask);
+        flushTaskResult = writer.submit(writeSSTableTask);
     }
 
     public void close() {
@@ -35,6 +36,17 @@ public class TableWriter {
             writer.shutdown();
             writer.awaitTermination(1, TimeUnit.HOURS);
         } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void waitUntilTableIsFlushed() {
+        try {
+            if (flushTaskResult != null) {
+                flushTaskResult.get();
+                flushTaskResult = null;
+            }
+        } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
     }
