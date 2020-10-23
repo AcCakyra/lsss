@@ -1,6 +1,7 @@
 package com.accakyra.lsss.lsm.io;
 
 import com.accakyra.lsss.lsm.LSMProperties;
+import com.accakyra.lsss.lsm.store.Key;
 import com.accakyra.lsss.lsm.store.MemTable;
 import com.accakyra.lsss.lsm.store.MetaData;
 import com.accakyra.lsss.lsm.store.SST;
@@ -52,14 +53,15 @@ public class TableWriter {
     }
 
     private SST convertMemTableToSSTable(MemTable memTable) {
-        ByteBuffer indexBuffer = ByteBuffer.allocate(LSMProperties.MEMTABLE_THRESHOLD * 4);
+        int indexBufferSize = memTable.calcKeysSize();
+        ByteBuffer indexBuffer = ByteBuffer.allocate(indexBufferSize);
         ByteBuffer dataBuffer = ByteBuffer.allocate(LSMProperties.MEMTABLE_THRESHOLD);
-        Iterator<Map.Entry<ByteBuffer, ByteBuffer>> memtableIterator = memTable.getIterator();
+        int valueOffset = 0;
 
-        int dataOffset = 0;
+        Iterator<Map.Entry<Key, ByteBuffer>> memtableIterator = memTable.getIterator();
         while (memtableIterator.hasNext()) {
-            Map.Entry<ByteBuffer, ByteBuffer> entry = memtableIterator.next();
-            byte[] key = entry.getKey().array();
+            Map.Entry<Key, ByteBuffer> entry = memtableIterator.next();
+            byte[] key = entry.getKey().getKey().array();
             byte[] value = entry.getValue().array();
             dataBuffer.put(key);
             dataBuffer.put(value);
@@ -67,15 +69,14 @@ public class TableWriter {
             indexBuffer.putInt(key.length);
             indexBuffer.put(key);
 
-            dataOffset += key.length;
-            indexBuffer.putInt(dataOffset);
+            valueOffset += key.length;
+            indexBuffer.putInt(valueOffset);
             indexBuffer.putInt(value.length);
-            dataOffset += value.length;
+            valueOffset += value.length;
         }
 
         dataBuffer.flip();
         indexBuffer.flip();
-
         return new SST(dataBuffer, indexBuffer);
     }
 }
