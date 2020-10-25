@@ -9,10 +9,13 @@ public class MetaData implements Closeable {
 
     private final File data;
     private AtomicInteger sstGeneration;
+    private AtomicInteger indexGeneration;
 
     public MetaData(File data) {
         this.data = data;
-        this.sstGeneration = new AtomicInteger(open(data));
+        int generation = open(data);
+        this.sstGeneration = new AtomicInteger(generation);
+        this.indexGeneration = new AtomicInteger(generation);
     }
 
     public int open(File data) {
@@ -33,7 +36,15 @@ public class MetaData implements Closeable {
         return sstGeneration.get();
     }
 
-    public void increment() {
+    public int getIndexGeneration() {
+        return indexGeneration.get();
+    }
+
+    public int getAndIncrementIndexGeneration() {
+        return indexGeneration.getAndIncrement();
+    }
+
+    public void incrementSstGeneration() {
         sstGeneration.incrementAndGet();
         flush();
     }

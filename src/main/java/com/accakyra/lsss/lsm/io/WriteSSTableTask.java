@@ -12,12 +12,14 @@ import java.nio.file.Path;
 
 public class WriteSSTableTask implements Runnable {
 
-    private final SST sstable;
+    private final ByteBuffer sstBuffer;
+    private final ByteBuffer indexBuffer;
     private final Path storage;
     private final MetaData metaData;
 
-    public WriteSSTableTask(SST sstable, Path storage, MetaData metaData) {
-        this.sstable = sstable;
+    public WriteSSTableTask(ByteBuffer sstBuffer, ByteBuffer indexBuffer, Path storage, MetaData metaData) {
+        this.sstBuffer = sstBuffer;
+        this.indexBuffer = indexBuffer;
         this.storage = storage;
         this.metaData = metaData;
     }
@@ -27,9 +29,9 @@ public class WriteSSTableTask implements Runnable {
         int generation = metaData.getSstGeneration();
         String sstableFileName = FileNameUtil.buildSstableFileName(storage.toString(), generation);
         String indexFileName = FileNameUtil.buildIndexFileName(storage.toString(), generation);
-        flushFile(sstableFileName, sstable.getSstable());
-        flushFile(indexFileName, sstable.getIndex());
-        metaData.increment();
+        flushFile(sstableFileName, sstBuffer);
+        flushFile(indexFileName, indexBuffer);
+        metaData.incrementSstGeneration();
     }
 
     private void flushFile(String fullFileName, ByteBuffer data) {

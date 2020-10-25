@@ -4,17 +4,11 @@ import java.nio.ByteBuffer;
 
 public class Key implements Comparable<Key> {
 
-    private int keySize;
     private final ByteBuffer key;
     private int offset;
     private int valueSize;
 
-    public Key(ByteBuffer key) {
-        this.key = key;
-    }
-
-    public Key(int keySize, ByteBuffer key, int offset, int valueSize) {
-        this.keySize = keySize;
+    public Key(ByteBuffer key, int offset, int valueSize) {
         this.key = key;
         this.offset = offset;
         this.valueSize = valueSize;
@@ -28,7 +22,7 @@ public class Key implements Comparable<Key> {
     }
 
     public int getKeySize() {
-        return keySize;
+        return key.limit();
     }
 
     public ByteBuffer getKey() {

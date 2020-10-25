@@ -144,7 +144,7 @@ class PersistenceTest extends TestBase {
         }
     }
 
-    @RepeatedTest(5)
+    @RepeatedTest(3)
     void manyRecords() throws IOException {
         final int recordsCount = 10_000;
         final Map<ByteBuffer, ByteBuffer> records = new HashMap<>(recordsCount);
@@ -158,6 +158,28 @@ class PersistenceTest extends TestBase {
                 records.put(key, value);
                 assertEquals(value, dao.get(key));
             }
+            for (Map.Entry<ByteBuffer, ByteBuffer> record : records.entrySet()) {
+                assertEquals(record.getValue(), dao.get(record.getKey()));
+            }
+        }
+    }
+
+    @RepeatedTest(3)
+    void manyRecordsAfterClose() throws IOException {
+        final int recordsCount = 10_000;
+        final Map<ByteBuffer, ByteBuffer> records = new HashMap<>(recordsCount);
+
+        try (final DAO dao = createDao()) {
+            for (int i = 0; i < recordsCount; i++) {
+                ByteBuffer key = randomKey();
+                ByteBuffer value = randomValue();
+                dao.upsert(key, value);
+
+                records.put(key, value);
+                assertEquals(value, dao.get(key));
+            }
+        }
+        try (final DAO dao = createDao()) {
             for (Map.Entry<ByteBuffer, ByteBuffer> record : records.entrySet()) {
                 assertEquals(record.getValue(), dao.get(record.getKey()));
             }

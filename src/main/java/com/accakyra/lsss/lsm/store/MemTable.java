@@ -5,38 +5,21 @@ import java.util.*;
 
 public class MemTable {
 
-    private final NavigableMap<Key, ByteBuffer> memtable;
-    private int offset;
+    private final NavigableMap<ByteBuffer, ByteBuffer> memtable;
 
     public MemTable() {
         this.memtable = new TreeMap<>();
     }
 
     public ByteBuffer get(ByteBuffer key) {
-        Key getKey = new Key(key);
-        return memtable.get(getKey);
+        return memtable.get(key);
     }
 
     public void upsert(ByteBuffer key, ByteBuffer value) {
-        int keySize = key.remaining();
-        int valueSize = value.remaining();
-
-        offset += keySize;
-        Key infoKey = new Key(keySize, key, offset, valueSize);
-        offset += valueSize;
-
-        memtable.put(infoKey, value);
+        memtable.put(key, value);
     }
 
-    public int calcKeysSize() {
-        return memtable.keySet()
-                .stream()
-                .mapToInt(Key::calcSize)
-                .reduce(Integer::sum)
-                .orElse(0);
-    }
-
-    public Iterator<Map.Entry<Key, ByteBuffer>> getIterator() {
+    public Iterator<Map.Entry<ByteBuffer, ByteBuffer>> getIterator() {
         return memtable.entrySet().iterator();
     }
 }

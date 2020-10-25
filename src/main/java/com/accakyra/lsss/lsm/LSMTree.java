@@ -3,12 +3,11 @@ package com.accakyra.lsss.lsm;
 import com.accakyra.lsss.DAO;
 import com.accakyra.lsss.lsm.io.TableReader;
 import com.accakyra.lsss.lsm.io.TableWriter;
-import com.accakyra.lsss.lsm.store.MemTable;
-import com.accakyra.lsss.lsm.store.MetaData;
+import com.accakyra.lsss.lsm.store.*;
 
 import java.io.File;
 import java.nio.ByteBuffer;
-import java.util.NoSuchElementException;
+import java.util.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
@@ -16,6 +15,7 @@ public class LSMTree implements DAO {
 
     private MemTable memtable;
     private MemTable immtable;
+    private List<Index> indexes;
     private final TableWriter tableWriter;
     private final TableReader tableReader;
     private final ReadWriteLock mutex;
@@ -23,17 +23,18 @@ public class LSMTree implements DAO {
     private final MetaData metaData;
 
     public LSMTree(File data) {
-        metaData = new MetaData(data);
-        memtable = new MemTable();
-        tableWriter = new TableWriter(metaData, data);
-        tableReader = new TableReader(metaData, data);
         mutex = new ReentrantReadWriteLock();
+        metaData = new MetaData(data);
+        tableWriter = new TableWriter(metaData, data);
+        tableReader = new TableReader(data);
+        indexes = tableReader.readIndexes(metaData.getIndexGeneration());
+        memtable = new MemTable();
     }
 
     public void upsert(ByteBuffer key, ByteBuffer value) {
         mutex.writeLock().lock();
 
-        int newEntrySize = key.remaining() + value.remaining();
+        int newEntrySize = key.limit() + value.limit();
         if (memtableByteCount + newEntrySize > LSMProperties.MEMTABLE_THRESHOLD) {
             switchToNewMemtable();
         }
@@ -49,7 +50,12 @@ public class LSMTree implements DAO {
         if (value == null) {
             if (immtable != null) value = immtable.get(key);
             if (value == null) {
-                value = tableReader.get(key);
+                for (Index index : indexes) {
+                    Key indexKey = index.getKey(key);
+                    if (indexKey != null) {
+                        value = tableReader.get(indexKey, index.getGeneration());
+                    }
+                }
             }
         }
         mutex.readLock().unlock();
@@ -72,9 +78,57 @@ public class LSMTree implements DAO {
     }
 
     private void switchToNewMemtable() {
+        scheduleMemtableFlushing(memtable);
         immtable = memtable;
-        tableWriter.scheduleFlushing(immtable);
         memtable = new MemTable();
         memtableByteCount = 0;
+    }
+
+    private void scheduleMemtableFlushing(MemTable memTable) {
+        Index index = convertMemtableToIndex(memTable);
+        indexes.add(index);
+        int indexBufferSize = index.calcIndexSize();
+
+        ByteBuffer indexBuffer = ByteBuffer.allocate(indexBufferSize);
+        ByteBuffer sstBuffer = ByteBuffer.allocate(LSMProperties.MEMTABLE_THRESHOLD);
+
+        int valueOffset = 0;
+        Iterator<Map.Entry<ByteBuffer, ByteBuffer>> memtableIterator = memtable.getIterator();
+        while (memtableIterator.hasNext()) {
+            Map.Entry<ByteBuffer, ByteBuffer> record = memtableIterator.next();
+            byte[] key = record.getKey().array();
+            byte[] value = record.getValue().array();
+
+            sstBuffer.put(key);
+            sstBuffer.put(value);
+
+            valueOffset += key.length;
+            indexBuffer.putInt(key.length);
+            indexBuffer.put(key);
+            indexBuffer.putInt(valueOffset);
+            indexBuffer.putInt(value.length);
+            valueOffset += value.length;
+        }
+
+        sstBuffer.flip();
+        indexBuffer.flip();
+
+        tableWriter.scheduleMemtableFlushing(sstBuffer, indexBuffer);
+    }
+
+    private Index convertMemtableToIndex(MemTable memtable) {
+        int valueOffset = 0;
+        NavigableSet<Key> indexKeys = new TreeSet<>();
+        Iterator<Map.Entry<ByteBuffer, ByteBuffer>> memtableIterator = memtable.getIterator();
+        while (memtableIterator.hasNext()) {
+            Map.Entry<ByteBuffer, ByteBuffer> record = memtableIterator.next();
+            int keySize = record.getKey().limit();
+            int valueSize = record.getValue().limit();
+
+            valueOffset += keySize;
+            indexKeys.add(new Key(record.getKey(), valueOffset, valueSize));
+            valueOffset += valueSize;
+        }
+        return new Index(indexKeys, metaData.getAndIncrementIndexGeneration());
     }
 }

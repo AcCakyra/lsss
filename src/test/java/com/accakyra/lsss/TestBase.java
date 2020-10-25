@@ -38,6 +38,6 @@ abstract class TestBase {
     }
 
     static DAO createDao() {
-        return new LSMTree(data);
+        return DAOFactory.create(data);
     }
 }
