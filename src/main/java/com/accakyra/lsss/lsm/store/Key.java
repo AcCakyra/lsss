@@ -14,17 +14,6 @@ public class Key implements Comparable<Key> {
         this.valueSize = valueSize;
     }
 
-    /**
-     * Calc size of {@link Key} in bytes
-     */
-    public int calcSize() {
-        return 4 + getKeySize() + 4 + 4;
-    }
-
-    public int getKeySize() {
-        return key.limit();
-    }
-
     public ByteBuffer getKey() {
         return key;
     }

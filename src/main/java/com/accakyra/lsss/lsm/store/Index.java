@@ -1,7 +1,6 @@
 package com.accakyra.lsss.lsm.store;
 
 import java.nio.ByteBuffer;
-import java.util.Iterator;
 import java.util.NavigableSet;
 
 public class Index {
@@ -14,18 +13,11 @@ public class Index {
         this.generation = generation;
     }
 
-    public int calcIndexSize() {
-        return keys.stream()
-                .mapToInt(Key::calcSize)
-                .sum();
-    }
-
     public Key getKey(ByteBuffer key) {
-        return keys.stream().filter(k -> k.getKey().equals(key)).findFirst().orElse(null);
-    }
-
-    public Iterator<Key> getIterator() {
-        return keys.iterator();
+        return keys.stream()
+                .filter(k -> k.getKey().equals(key))
+                .findFirst()
+                .orElse(null);
     }
 
     public int getGeneration() {

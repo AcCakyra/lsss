@@ -6,6 +6,7 @@ import java.util.*;
 public class MemTable {
 
     private final NavigableMap<ByteBuffer, ByteBuffer> memtable;
+    private int keysCapacity;
 
     public MemTable() {
         this.memtable = new TreeMap<>();
@@ -16,7 +17,18 @@ public class MemTable {
     }
 
     public void upsert(ByteBuffer key, ByteBuffer value) {
+        if (!memtable.containsKey(key)) {
+            keysCapacity += key.capacity();
+        }
         memtable.put(key, value);
+    }
+
+    public int getKeysCapacity() {
+        return keysCapacity;
+    }
+
+    public int getSize() {
+        return memtable.size();
     }
 
     public Iterator<Map.Entry<ByteBuffer, ByteBuffer>> getIterator() {
