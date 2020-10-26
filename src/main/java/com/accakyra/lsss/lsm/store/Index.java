@@ -1,23 +1,20 @@
 package com.accakyra.lsss.lsm.store;
 
 import java.nio.ByteBuffer;
-import java.util.NavigableSet;
+import java.util.Map;
 
 public class Index {
 
-    private final NavigableSet<Key> keys;
+    private final Map<ByteBuffer, KeyInfo> keys;
     private final int generation;
 
-    public Index(NavigableSet<Key> keys, int generation) {
-        this.keys = keys;
+    public Index(Map<ByteBuffer, KeyInfo> keyInfos, int generation) {
+        this.keys = keyInfos;
         this.generation = generation;
     }
 
-    public Key getKey(ByteBuffer key) {
-        return keys.stream()
-                .filter(k -> k.getKey().equals(key))
-                .findFirst()
-                .orElse(null);
+    public KeyInfo getKey(ByteBuffer key) {
+        return keys.get(key);
     }
 
     public int getGeneration() {

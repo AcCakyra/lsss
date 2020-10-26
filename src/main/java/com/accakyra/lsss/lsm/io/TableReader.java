@@ -1,7 +1,7 @@
 package com.accakyra.lsss.lsm.io;
 
 import com.accakyra.lsss.lsm.store.Index;
-import com.accakyra.lsss.lsm.store.Key;
+import com.accakyra.lsss.lsm.store.KeyInfo;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 
 import java.io.File;
@@ -10,10 +10,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.NavigableSet;
-import java.util.TreeSet;
+import java.util.*;
 
 public class TableReader {
 
@@ -23,8 +20,8 @@ public class TableReader {
         this.data = data;
     }
 
-    public ByteBuffer get(Key key, int generation) {
-        return getValueFromSSTable(key, generation);
+    public ByteBuffer get(KeyInfo keyInfo, int generation) {
+        return getValueFromSSTable(keyInfo, generation);
     }
 
     public List<Index> readIndexes(int lastGeneration) {
@@ -42,9 +39,15 @@ public class TableReader {
             MappedByteBuffer indexBuffer = indexChannel.map(FileChannel.MapMode.READ_ONLY, 0, indexChannel.size());
             indexBuffer.load();
 
-            NavigableSet<Key> keys = new TreeSet<>();
+            Map<ByteBuffer, KeyInfo> keys = new TreeMap<>();
             while (indexBuffer.hasRemaining()) {
-                keys.add(readNextKey(indexBuffer));
+                int keySize = indexBuffer.getInt();
+                byte[] key = new byte[keySize];
+                indexBuffer.get(key);
+                ByteBuffer keyBuffer = ByteBuffer.wrap(key);
+                int offset = indexBuffer.getInt();
+                int valueSize = indexBuffer.getInt();
+                keys.put(keyBuffer, new KeyInfo(offset, valueSize));
             }
             return new Index(keys, generation);
 
@@ -54,23 +57,13 @@ public class TableReader {
         }
     }
 
-    private Key readNextKey(MappedByteBuffer buffer) {
-        int keySize = buffer.getInt();
-        byte[] key = new byte[keySize];
-        buffer.get(key);
-        ByteBuffer keyBuffer = ByteBuffer.wrap(key);
-        int offset = buffer.getInt();
-        int valueSize = buffer.getInt();
-        return new Key(keyBuffer, offset, valueSize);
-    }
-
-    private ByteBuffer getValueFromSSTable(Key key, int generation) {
+    private ByteBuffer getValueFromSSTable(KeyInfo keyInfo, int generation) {
         String sstFileName = FileNameUtil.buildSstableFileName(data.getAbsolutePath(), generation);
         try (RandomAccessFile indexFile = new RandomAccessFile(sstFileName, "r");
              FileChannel channel = indexFile.getChannel()) {
 
-            MappedByteBuffer dataBuffer = channel.map(FileChannel.MapMode.READ_ONLY, key.getOffset(), key.getValueSize());
-            byte[] value = new byte[key.getValueSize()];
+            MappedByteBuffer dataBuffer = channel.map(FileChannel.MapMode.READ_ONLY, keyInfo.getOffset(), keyInfo.getValueSize());
+            byte[] value = new byte[keyInfo.getValueSize()];
             dataBuffer.get(value);
             return ByteBuffer.wrap(value);
 

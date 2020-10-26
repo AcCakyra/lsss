@@ -51,9 +51,9 @@ public class LSMTree implements DAO {
             if (immtable != null) value = immtable.get(key);
             if (value == null) {
                 for (Index index : indexes) {
-                    Key indexKey = index.getKey(key);
-                    if (indexKey != null) {
-                        value = tableReader.get(indexKey, index.getGeneration());
+                    KeyInfo indexKeyInfo = index.getKey(key);
+                    if (indexKeyInfo != null) {
+                        value = tableReader.get(indexKeyInfo, index.getGeneration());
                     }
                 }
             }
@@ -93,7 +93,7 @@ public class LSMTree implements DAO {
 
         ByteBuffer indexBuffer = ByteBuffer.allocate(indexBufferSize);
         ByteBuffer sstBuffer = ByteBuffer.allocate(LSMProperties.MEMTABLE_THRESHOLD);
-        NavigableSet<Key> indexKeys = new TreeSet<>();
+        Map<ByteBuffer, KeyInfo> indexKeys = new TreeMap<>();
 
         int valueOffset = 0;
         Iterator<Map.Entry<ByteBuffer, ByteBuffer>> memtableIterator = memtable.getIterator();
@@ -112,7 +112,7 @@ public class LSMTree implements DAO {
             indexBuffer.put(key);
             indexBuffer.putInt(valueOffset);
             indexBuffer.putInt(value.length);
-            indexKeys.add(new Key(record.getKey(), valueOffset, value.length));
+            indexKeys.put(record.getKey(), new KeyInfo(valueOffset, value.length));
 
             valueOffset += value.length;
         }
