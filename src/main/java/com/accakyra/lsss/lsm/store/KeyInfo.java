@@ -2,8 +2,8 @@ package com.accakyra.lsss.lsm.store;
 
 public class KeyInfo {
 
-    private int offset;
-    private int valueSize;
+    private final int offset;
+    private final int valueSize;
 
     public KeyInfo(int offset, int valueSize) {
         this.offset = offset;

@@ -1,22 +1,19 @@
 package com.accakyra.lsss;
 
+import com.accakyra.lsss.lsm.LSMProperties;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class PersistenceTest extends TestBase {
 
     @Test
-    void oneFolder() throws IOException {
+    void cleanDirectory() throws IOException {
         final ByteBuffer key = randomKey();
         final ByteBuffer value = randomValue();
 
@@ -24,14 +21,9 @@ class PersistenceTest extends TestBase {
             dao.upsert(key, value);
             assertEquals(value, dao.get(key));
         } finally {
-            Files.walk(data.toPath())
-                    .sorted(Comparator.reverseOrder())
-                    .map(Path::toFile)
-                    .forEach(File::delete);
+            cleanStorage();
         }
 
-        assertFalse(data.exists());
-        assertTrue(data.mkdir());
         try (DAO dao = createDao()) {
             assertThrows(NoSuchElementException.class, () -> dao.get(key));
         }
@@ -201,6 +193,107 @@ class PersistenceTest extends TestBase {
             try (DAO dao = createDao()) {
                 assertEquals(value, dao.get(key));
             }
+        }
+    }
+
+    @Test
+    void iteration() throws IOException {
+        int count = 1000;
+        NavigableMap<ByteBuffer, ByteBuffer> map = new TreeMap<>();
+        try (DAO dao = createDao()) {
+            for (int i = 0; i < count; i++) {
+                ByteBuffer key = randomKey();
+                ByteBuffer value = randomValue();
+                dao.upsert(key, value);
+                map.put(key, value);
+            }
+        }
+
+        int fromIndex = new Random().nextInt(count / 2);
+        int toIndex = fromIndex + new Random().nextInt(count / 2);
+        ByteBuffer from = map.entrySet().stream().skip(fromIndex).findFirst().get().getKey();
+        ByteBuffer to = map.entrySet().stream().skip(toIndex).findFirst().get().getKey();
+
+        try (DAO dao = createDao()) {
+            Iterator<Map.Entry<ByteBuffer, ByteBuffer>> expectedIter = map.subMap(from, to).entrySet().iterator();
+            Iterator<Record> actualIter = dao.iterator(from, to);
+
+            while (expectedIter.hasNext()) {
+                Map.Entry<ByteBuffer, ByteBuffer> expected = expectedIter.next();
+                Record actual = actualIter.next();
+                assertEquals(expected.getKey(), actual.getKey());
+                assertEquals(expected.getValue(), actual.getValue());
+
+                dao.upsert(randomKey(), randomValue());
+            }
+            assertFalse(actualIter.hasNext());
+        }
+    }
+
+    @Test
+    void iterationWithFlushing() throws IOException {
+        NavigableMap<ByteBuffer, ByteBuffer> map = new TreeMap<>();
+        try (DAO dao = createDao()) {
+            int count = 1000;
+            for (int i = 0; i < count; i++) {
+                ByteBuffer key = randomKey();
+                ByteBuffer value = randomValue();
+                dao.upsert(key, value);
+                map.put(key, value);
+            }
+
+            Iterator<Map.Entry<ByteBuffer, ByteBuffer>> expectedIter = map.entrySet().iterator();
+            Iterator<Record> actualIter = dao.iterator();
+
+            int insertionCountToFlushMemtable =
+                    LSMProperties.MEMTABLE_THRESHOLD / (TestBase.VALUE_LENGTH + TestBase.KEY_LENGTH) + 1;
+
+            for (int i = 0; i < insertionCountToFlushMemtable; i++) {
+                dao.upsert(randomKey(), randomValue());
+            }
+
+            while (expectedIter.hasNext()) {
+                Map.Entry<ByteBuffer, ByteBuffer> expected = expectedIter.next();
+                Record actual = actualIter.next();
+                assertEquals(expected.getKey(), actual.getKey());
+                assertEquals(expected.getValue(), actual.getValue());
+            }
+            assertFalse(actualIter.hasNext());
+        }
+    }
+
+    @Test
+    void dao() throws IOException {
+        try (DAO dao = createDao()) {
+            dao.upsert(stringToByteBuffer("AAA1"), randomValue());
+            dao.upsert(stringToByteBuffer("AAA2"), randomValue());
+            dao.upsert(stringToByteBuffer("AAA3"), randomValue());
+            dao.upsert(stringToByteBuffer("AAA4"), randomValue());
+            dao.upsert(stringToByteBuffer("BBB1"), randomValue());
+            dao.upsert(stringToByteBuffer("BBB2"), randomValue());
+            dao.upsert(stringToByteBuffer("CCC1"), randomValue());
+            dao.upsert(stringToByteBuffer("ZZZ1"), randomValue());
+            dao.upsert(stringToByteBuffer("ZZZ2"), randomValue());
+        }
+
+        try (DAO dao = createDao()) {
+            assertEquals(9, calcIteratorSize(dao.iterator()));
+
+            assertEquals(4, calcIteratorSize(dao.iterator(stringToByteBuffer("BBB2"))));
+            assertEquals(5, calcIteratorSize(dao.iterator(stringToByteBuffer("AAA5"))));
+
+            assertEquals(9, calcIteratorSize(dao.iterator(
+                    stringToByteBuffer("A"),
+                    stringToByteBuffer("ZZZZZ")))
+            );
+            assertEquals(1, calcIteratorSize(dao.iterator(
+                    stringToByteBuffer("AAA3"),
+                    stringToByteBuffer("AAA4")))
+            );
+            assertEquals(1, calcIteratorSize(dao.iterator(
+                    stringToByteBuffer("BBB3"),
+                    stringToByteBuffer("CCC2")))
+            );
         }
     }
 }

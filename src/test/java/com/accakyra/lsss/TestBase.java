@@ -1,16 +1,19 @@
 package com.accakyra.lsss;
 
-import com.accakyra.lsss.lsm.LSMTree;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Comparator;
+import java.util.Iterator;
 import java.util.concurrent.ThreadLocalRandom;
 
 abstract class TestBase {
 
-    private static final int KEY_LENGTH = 16;
-    private static final int VALUE_LENGTH = 1024;
+    static final int KEY_LENGTH = 16;
+    static final int VALUE_LENGTH = 1024;
 
     @TempDir
     static File data;
@@ -39,5 +42,25 @@ abstract class TestBase {
 
     static DAO createDao() {
         return DAOFactory.create(data);
+    }
+
+    @AfterEach
+    void cleanStorage() {
+        Arrays.stream(data.listFiles())
+                .sorted(Comparator.reverseOrder())
+                .forEach(File::delete);
+    }
+
+    int calcIteratorSize(Iterator<?> iterator) {
+        int count = 0;
+        while (iterator.hasNext()) {
+            iterator.next();
+            count++;
+        }
+        return count;
+    }
+
+    ByteBuffer stringToByteBuffer(String data) {
+        return ByteBuffer.wrap(data.getBytes());
     }
 }

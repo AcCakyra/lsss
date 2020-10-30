@@ -36,10 +36,6 @@ public class MetaData implements Closeable {
         return sstGeneration.get();
     }
 
-    public int getIndexGeneration() {
-        return indexGeneration.get();
-    }
-
     public int getAndIncrementIndexGeneration() {
         return indexGeneration.getAndIncrement();
     }
