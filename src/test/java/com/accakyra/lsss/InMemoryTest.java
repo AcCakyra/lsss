@@ -1,5 +1,6 @@
 package com.accakyra.lsss;
 
+import com.accakyra.lsss.lsm.Record;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;

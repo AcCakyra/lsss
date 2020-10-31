@@ -1,11 +1,10 @@
 package com.accakyra.lsss.lsm.store;
 
-import com.accakyra.lsss.Record;
+import com.accakyra.lsss.lsm.Record;
 import com.accakyra.lsss.lsm.LSMProperties;
 
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.concurrent.ConcurrentSkipListMap;
 
 public class Memtable implements Resource {
 

@@ -1,15 +1,12 @@
 package com.accakyra.lsss.lsm.store;
 
-import com.accakyra.lsss.Record;
+import com.accakyra.lsss.lsm.Record;
 
-import java.io.Closeable;
-import java.io.IOException;
 import java.util.Iterator;
 import java.util.List;
 import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantLock;
 
 public class LSMIterator implements Iterator<Record> {
 

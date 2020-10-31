@@ -1,6 +1,6 @@
 package com.accakyra.lsss.lsm.store;
 
-import com.accakyra.lsss.Record;
+import com.accakyra.lsss.lsm.Record;
 
 import java.nio.ByteBuffer;
 import java.util.Iterator;

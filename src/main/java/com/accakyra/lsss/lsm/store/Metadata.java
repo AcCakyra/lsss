@@ -5,13 +5,13 @@ import com.accakyra.lsss.lsm.util.FileNameUtil;
 import java.io.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MetaData implements Closeable {
+public class Metadata implements Closeable {
 
     private final File data;
     private AtomicInteger sstGeneration;
     private AtomicInteger indexGeneration;
 
-    public MetaData(File data) {
+    public Metadata(File data) {
         this.data = data;
         int generation = open(data);
         this.sstGeneration = new AtomicInteger(generation);

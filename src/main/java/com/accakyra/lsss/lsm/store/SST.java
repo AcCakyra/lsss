@@ -1,26 +1,27 @@
 package com.accakyra.lsss.lsm.store;
 
-import com.accakyra.lsss.Record;
-import com.accakyra.lsss.lsm.io.TableReader;
+import com.accakyra.lsss.lsm.Record;
+import com.accakyra.lsss.lsm.io.SSTReader;
 
+import java.io.File;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
 
 public class SST implements Resource {
 
     private final Index index;
-    private final TableReader reader;
+    private final File data;
 
-    public SST(Index index, TableReader reader) {
+    public SST(Index index, File data) {
         this.index = index;
-        this.reader = reader;
+        this.data = data;
     }
 
     @Override
     public Record get(ByteBuffer key) {
         KeyInfo keyInfo = index.getKeyInfo(key);
         if (keyInfo == null) return null;
-        ByteBuffer value = reader.getValueFromStorage(keyInfo, index.getGeneration());
+        ByteBuffer value = SSTReader.getValueFromStorage(data, keyInfo, index.getGeneration());
         return new Record(key, value);
     }
 
@@ -30,7 +31,7 @@ public class SST implements Resource {
                 .stream()
                 .map(key -> {
                     KeyInfo keyInfo = index.getKeyInfo(key);
-                    ByteBuffer value = reader.getValueFromStorage(keyInfo, index.getGeneration());
+                    ByteBuffer value = SSTReader.getValueFromStorage(data, keyInfo, index.getGeneration());
                     return new Record(key, value);
                 })
                 .iterator();
@@ -43,7 +44,7 @@ public class SST implements Resource {
                 .stream()
                 .map(key -> {
                     KeyInfo keyInfo = index.getKeyInfo(key);
-                    ByteBuffer value = reader.getValueFromStorage(keyInfo, index.getGeneration());
+                    ByteBuffer value = SSTReader.getValueFromStorage(data, keyInfo, index.getGeneration());
                     return new Record(key, value);
                 })
                 .iterator();
@@ -56,7 +57,7 @@ public class SST implements Resource {
                 .stream()
                 .map(key -> {
                     KeyInfo keyInfo = index.getKeyInfo(key);
-                    ByteBuffer value = reader.getValueFromStorage(keyInfo, index.getGeneration());
+                    ByteBuffer value = SSTReader.getValueFromStorage(data, keyInfo, index.getGeneration());
                     return new Record(key, value);
                 })
                 .iterator();

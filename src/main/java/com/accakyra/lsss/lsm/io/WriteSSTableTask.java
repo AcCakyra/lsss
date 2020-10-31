@@ -1,7 +1,6 @@
 package com.accakyra.lsss.lsm.io;
 
-import com.accakyra.lsss.lsm.store.MetaData;
-import com.accakyra.lsss.lsm.store.SST;
+import com.accakyra.lsss.lsm.store.Metadata;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 
 import java.io.IOException;
@@ -15,9 +14,9 @@ public class WriteSSTableTask implements Runnable {
     private final ByteBuffer sstBuffer;
     private final ByteBuffer indexBuffer;
     private final Path storage;
-    private final MetaData metaData;
+    private final Metadata metaData;
 
-    public WriteSSTableTask(ByteBuffer sstBuffer, ByteBuffer indexBuffer, Path storage, MetaData metaData) {
+    public WriteSSTableTask(ByteBuffer sstBuffer, ByteBuffer indexBuffer, Path storage, Metadata metaData) {
         this.sstBuffer = sstBuffer;
         this.indexBuffer = indexBuffer;
         this.storage = storage;

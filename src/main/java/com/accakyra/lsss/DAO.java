@@ -1,5 +1,7 @@
 package com.accakyra.lsss;
 
+import com.accakyra.lsss.lsm.Record;
+
 import java.io.Closeable;
 import java.nio.ByteBuffer;
 import java.util.Iterator;
