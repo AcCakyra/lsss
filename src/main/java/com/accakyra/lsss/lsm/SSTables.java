@@ -1,6 +1,8 @@
-package com.accakyra.lsss.lsm.store;
+package com.accakyra.lsss.lsm;
 
-import com.accakyra.lsss.lsm.io.TableManager;
+import com.accakyra.lsss.lsm.storage.Memtable;
+import com.accakyra.lsss.lsm.storage.Resource;
+import com.accakyra.lsss.lsm.storage.SST;
 
 import java.io.Closeable;
 import java.io.File;
@@ -17,7 +19,7 @@ public class SSTables implements Iterable<Resource>, Closeable {
         ssts = tableManager.readSSTs();
     }
 
-    public void writeMemtable(Memtable memtable) {
+    public void addMemtable(Memtable memtable) {
         SST sst = tableManager.writeMemtable(memtable);
         ssts.add(sst);
     }

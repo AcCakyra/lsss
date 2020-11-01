@@ -1,4 +1,4 @@
-package com.accakyra.lsss.lsm;
+package com.accakyra.lsss;
 
 import java.nio.ByteBuffer;
 

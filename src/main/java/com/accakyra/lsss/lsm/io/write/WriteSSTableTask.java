@@ -1,6 +1,6 @@
-package com.accakyra.lsss.lsm.io;
+package com.accakyra.lsss.lsm.io.write;
 
-import com.accakyra.lsss.lsm.store.Metadata;
+import com.accakyra.lsss.lsm.Metadata;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 
 import java.io.IOException;

@@ -1,7 +1,6 @@
 package com.accakyra.lsss;
 
-import com.accakyra.lsss.lsm.LSMProperties;
-import com.accakyra.lsss.lsm.Record;
+import com.accakyra.lsss.lsm.Config;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 
@@ -247,7 +246,7 @@ class PersistenceTest extends TestBase {
             Iterator<Record> actualIter = dao.iterator();
 
             int insertionCountToFlushMemtable =
-                    LSMProperties.MEMTABLE_THRESHOLD / (TestBase.VALUE_LENGTH + TestBase.KEY_LENGTH) + 1;
+                    Config.MEMTABLE_THRESHOLD / (TestBase.VALUE_LENGTH + TestBase.KEY_LENGTH) + 1;
 
             for (int i = 0; i < insertionCountToFlushMemtable; i++) {
                 dao.upsert(randomKey(), randomValue());

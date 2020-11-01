@@ -1,8 +1,8 @@
 package com.accakyra.lsss.lsm;
 
 import com.accakyra.lsss.DAO;
-import com.accakyra.lsss.lsm.store.LSMIterator;
-import com.accakyra.lsss.lsm.store.*;
+import com.accakyra.lsss.Record;
+import com.accakyra.lsss.lsm.storage.*;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -11,6 +11,10 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class LSMTree implements DAO {
+    /**
+     * Special value for deleted keys.
+     */
+    public static ByteBuffer TOMBSTONE = ByteBuffer.wrap("TTTT".getBytes());
 
     private Memtable memtable;
     private Memtable immtable;
@@ -23,6 +27,7 @@ public class LSMTree implements DAO {
         sstables = new SSTables(data);
     }
 
+    @Override
     public void upsert(ByteBuffer key, ByteBuffer value) {
         mutex.writeLock().lock();
         if (!memtable.canStore(key, value)) {
@@ -32,11 +37,14 @@ public class LSMTree implements DAO {
         mutex.writeLock().unlock();
     }
 
+    @Override
     public ByteBuffer get(ByteBuffer key) throws NoSuchElementException {
         mutex.readLock().lock();
         Record record = memtable.get(key);
         if (record == null) {
-            if (immtable != null) record = immtable.get(key);
+            if (immtable != null) {
+                record = immtable.get(key);
+            }
             if (record == null) {
                 for (Resource sst : sstables) {
                     record = sst.get(key);
@@ -45,61 +53,77 @@ public class LSMTree implements DAO {
             }
         }
         mutex.readLock().unlock();
-        if (record == null || record.getValue().equals(LSMProperties.TOMBSTONE)) {
-            throw new NoSuchElementException();
-        }
-        return record.getValue();
+        return extractValue(record);
     }
 
+    @Override
     public void delete(ByteBuffer key) {
-        upsert(key, LSMProperties.TOMBSTONE);
+        upsert(key, TOMBSTONE);
     }
 
+    @Override
     public Iterator<Record> iterator() {
         mutex.readLock().lock();
-        List<Iterator<Record>> iterators = new ArrayList<>();
+        List<Iterator<Record>> iterators = iterators();
+        mutex.readLock().unlock();
+        return new LSMIterator(iterators, mutex);
+    }
 
+    @Override
+    public Iterator<Record> iterator(ByteBuffer from) {
+        mutex.readLock().lock();
+        List<Iterator<Record>> iterators = iterators(from);
+        mutex.readLock().unlock();
+        return new LSMIterator(iterators, mutex);
+    }
+
+    @Override
+    public Iterator<Record> iterator(ByteBuffer from, ByteBuffer to) {
+        mutex.readLock().lock();
+        List<Iterator<Record>> iterators = iterators(from, to);
+        mutex.readLock().unlock();
+        return new LSMIterator(iterators, mutex);
+    }
+
+    private ByteBuffer extractValue(Record record) {
+        if (record == null || record.getValue().equals(TOMBSTONE)) throw new NoSuchElementException();
+        else return record.getValue();
+    }
+
+    private List<Iterator<Record>> iterators() {
+        List<Iterator<Record>> iterators = new ArrayList<>();
         iterators.add(memtable.iterator());
         if (immtable != null) iterators.add(immtable.iterator());
         for (Resource sst : sstables) iterators.add(sst.iterator());
-
-        mutex.readLock().unlock();
-        return new LSMIterator(iterators, mutex);
+        return iterators;
     }
 
-    public Iterator<Record> iterator(ByteBuffer from) {
-        mutex.readLock().lock();
+    private List<Iterator<Record>> iterators(ByteBuffer from) {
         List<Iterator<Record>> iterators = new ArrayList<>();
-
         iterators.add(memtable.iterator(from));
         if (immtable != null) iterators.add(immtable.iterator(from));
         for (Resource sst : sstables) iterators.add(sst.iterator(from));
-
-        mutex.readLock().unlock();
-        return new LSMIterator(iterators, mutex);
+        return iterators;
     }
 
-    public Iterator<Record> iterator(ByteBuffer from, ByteBuffer to) {
-        mutex.readLock().lock();
+    private List<Iterator<Record>> iterators(ByteBuffer from, ByteBuffer to) {
         List<Iterator<Record>> iterators = new ArrayList<>();
-
         iterators.add(memtable.iterator(from, to));
         if (immtable != null) iterators.add(immtable.iterator(from, to));
         for (Resource sst : sstables) iterators.add(sst.iterator(from, to));
-
-        mutex.readLock().unlock();
-        return new LSMIterator(iterators, mutex);
+        return iterators;
     }
 
+    @Override
     public void close() {
         mutex.writeLock().lock();
-        sstables.writeMemtable(memtable);
+        sstables.addMemtable(memtable);
         sstables.close();
         mutex.writeLock().unlock();
     }
 
     private void createNewMemtable() {
-        sstables.writeMemtable(memtable);
+        sstables.addMemtable(memtable);
         immtable = memtable;
         memtable = new Memtable();
     }

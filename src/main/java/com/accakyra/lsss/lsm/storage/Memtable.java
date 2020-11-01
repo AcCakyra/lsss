@@ -1,7 +1,7 @@
-package com.accakyra.lsss.lsm.store;
+package com.accakyra.lsss.lsm.storage;
 
-import com.accakyra.lsss.lsm.Record;
-import com.accakyra.lsss.lsm.LSMProperties;
+import com.accakyra.lsss.Record;
+import com.accakyra.lsss.lsm.Config;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -47,7 +47,7 @@ public class Memtable implements Resource {
     }
 
     public boolean canStore(ByteBuffer key, ByteBuffer value) {
-        return key.limit() + value.limit() + getTotalBytesCapacity() <= LSMProperties.MEMTABLE_THRESHOLD;
+        return key.limit() + value.limit() + getTotalBytesCapacity() <= Config.MEMTABLE_THRESHOLD;
     }
 
     @Override

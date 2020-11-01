@@ -1,4 +1,4 @@
-package com.accakyra.lsss.lsm.store;
+package com.accakyra.lsss.lsm;
 
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 

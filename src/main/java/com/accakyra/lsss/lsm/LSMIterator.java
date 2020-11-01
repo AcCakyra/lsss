@@ -1,6 +1,6 @@
-package com.accakyra.lsss.lsm.store;
+package com.accakyra.lsss.lsm;
 
-import com.accakyra.lsss.lsm.Record;
+import com.accakyra.lsss.Record;
 
 import java.util.Iterator;
 import java.util.List;
