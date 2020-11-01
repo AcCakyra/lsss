@@ -67,9 +67,9 @@ public class TableManager {
         return new SST(index,  metadata.getAndIncrementIndexGeneration(), data.toPath().toString());
     }
 
-    public List<Resource> readSSTs() {
+    public List<SST> readSSTs() {
         int maxGeneration = metadata.getSstGeneration();
-        List<Resource> ssts = new ArrayList<>(maxGeneration);
+        List<SST> ssts = new ArrayList<>(maxGeneration);
         for (int i = maxGeneration - 1; i >= 0; i--) {
             String indexFileName = FileNameUtil.buildIndexFileName(data.getAbsolutePath(), i);
             Index index = TableReader.readIndex(indexFileName);

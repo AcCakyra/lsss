@@ -26,6 +26,10 @@ public class SST implements Resource {
         return new Record(key, value);
     }
 
+    public boolean contains(ByteBuffer key) {
+        return index.getKeyInfo(key) != null;
+    }
+
     @Override
     public Iterator<Record> iterator() {
         return iterator(index.keys());

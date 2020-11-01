@@ -18,13 +18,16 @@ public class LSMTree implements DAO {
 
     private Memtable memtable;
     private Memtable immtable;
-    private final SSTables sstables;
+    private final TableManager tableManager;
+    private final List<SST> sstables;
     private final ReadWriteLock mutex;
 
     public LSMTree(File data) {
-        mutex = new ReentrantReadWriteLock();
         memtable = new Memtable();
-        sstables = new SSTables(data);
+        immtable = new Memtable();
+        tableManager = new TableManager(data);
+        sstables = tableManager.readSSTs();
+        mutex = new ReentrantReadWriteLock();
     }
 
     @Override
@@ -42,14 +45,13 @@ public class LSMTree implements DAO {
         mutex.readLock().lock();
         Record record = memtable.get(key);
         if (record == null) {
-            if (immtable != null) {
-                record = immtable.get(key);
-            }
+            record = immtable.get(key);
             if (record == null) {
-                for (Resource sst : sstables) {
-                    record = sst.get(key);
-                    if (record != null) break;
-                }
+                record = sstables.stream()
+                        .filter(sst -> sst.contains(key))
+                        .findFirst()
+                        .map(sst -> sst.get(key))
+                        .orElse(null);
             }
         }
         mutex.readLock().unlock();
@@ -114,16 +116,21 @@ public class LSMTree implements DAO {
         return iterators;
     }
 
+    private void flushMemtable(Memtable memtable) {
+        SST sst = tableManager.writeMemtable(memtable);
+        sstables.add(sst);
+    }
+
     @Override
     public void close() {
         mutex.writeLock().lock();
-        sstables.addMemtable(memtable);
-        sstables.close();
+        flushMemtable(memtable);
+        tableManager.close();
         mutex.writeLock().unlock();
     }
 
     private void createNewMemtable() {
-        sstables.addMemtable(memtable);
+        flushMemtable(memtable);
         immtable = memtable;
         memtable = new Memtable();
     }
