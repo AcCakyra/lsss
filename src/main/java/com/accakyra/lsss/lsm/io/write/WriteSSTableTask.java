@@ -13,28 +13,28 @@ public class WriteSSTableTask implements Runnable {
 
     private final ByteBuffer sstBuffer;
     private final ByteBuffer indexBuffer;
-    private final Path storage;
+    private final Path dataPath;
     private final Metadata metaData;
 
-    public WriteSSTableTask(ByteBuffer sstBuffer, ByteBuffer indexBuffer, Path storage, Metadata metaData) {
+    public WriteSSTableTask(ByteBuffer sstBuffer, ByteBuffer indexBuffer, Path dataPath, Metadata metaData) {
         this.sstBuffer = sstBuffer;
         this.indexBuffer = indexBuffer;
-        this.storage = storage;
+        this.dataPath = dataPath;
         this.metaData = metaData;
     }
 
     @Override
     public void run() {
         int generation = metaData.getSstGeneration();
-        String sstableFileName = FileNameUtil.buildSstableFileName(storage.toString(), generation);
-        String indexFileName = FileNameUtil.buildIndexFileName(storage.toString(), generation);
+        Path sstableFileName = FileNameUtil.buildSstableFileName(dataPath, generation);
+        Path indexFileName = FileNameUtil.buildIndexFileName(dataPath, generation);
         flushFile(sstableFileName, sstBuffer);
         flushFile(indexFileName, indexBuffer);
         metaData.incrementSstGeneration();
     }
 
-    private void flushFile(String fullFileName, ByteBuffer data) {
-        try (RandomAccessFile writer = new RandomAccessFile(fullFileName, "rw");
+    private void flushFile(Path fullFileName, ByteBuffer data) {
+        try (RandomAccessFile writer = new RandomAccessFile(fullFileName.toString(), "rw");
              FileChannel fileChannel = writer.getChannel()) {
             while (data.hasRemaining()) {
                 fileChannel.write(data);

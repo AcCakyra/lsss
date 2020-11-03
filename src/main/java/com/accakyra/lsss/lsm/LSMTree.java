@@ -124,7 +124,7 @@ public class LSMTree implements DAO {
     @Override
     public void close() {
         mutex.writeLock().lock();
-        flushMemtable(memtable);
+        createNewMemtable();
         tableManager.close();
         mutex.writeLock().unlock();
     }

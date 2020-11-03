@@ -1,16 +1,18 @@
 package com.accakyra.lsss.lsm.util;
 
+import java.nio.file.Path;
+
 public class FileNameUtil {
 
-    public static String buildSstableFileName(String folderName, int generation) {
-        return folderName + "/" + "sstable" + generation + ".sst";
+    public static Path buildSstableFileName(Path folderName, int generation) {
+        return Path.of(folderName + "/" + "sstable" + generation + ".sst");
     }
 
-    public static String buildIndexFileName(String folderName, int generation) {
-        return folderName + "/" + "index" + generation + ".idx";
+    public static Path buildIndexFileName(Path folderName, int generation) {
+        return Path.of(folderName + "/" + "index" + generation + ".idx");
     }
 
-    public static String buildMetaDataFileName(String folderName) {
-        return folderName + "/" + "metadata" + ".mx";
+    public static Path buildMetaDataFileName(Path folderName) {
+        return Path.of(folderName + "/" + "metadata" + ".mx");
     }
 }
