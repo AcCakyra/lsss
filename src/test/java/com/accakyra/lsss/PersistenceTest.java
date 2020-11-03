@@ -89,7 +89,7 @@ class PersistenceTest extends TestBase {
 
     @Test
     void hugeKeys() throws IOException {
-        final int size = 1024 * 1024;
+        final int size = Config.MEMTABLE_THRESHOLD;
         final ByteBuffer payload = randomBuffer(size);
         final ByteBuffer value = randomValue();
         final int records = 128;
@@ -114,7 +114,7 @@ class PersistenceTest extends TestBase {
 
     @Test
     void hugeValues() throws IOException {
-        final int size = 1024 * 1024;
+        final int size = Config.MEMTABLE_THRESHOLD;
         final ByteBuffer suffix = randomBuffer(size);
         final int records = 128;
         final Collection<ByteBuffer> keys = new ArrayList<>(records);
