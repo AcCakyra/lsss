@@ -30,14 +30,11 @@ public class TableManager {
         // 4 bytes for storing length of key
         // 4 bytes for storing offset in sst file for value of this key
         // 4 bytes for storing length of value
-        int indexBufferSize = memtable.getKeysCapacity() + 12 * memtable.getUniqueKeysCount();
-        int alignedIndexBufferSize = Integer.highestOneBit(indexBufferSize) * 2;
-
+        int indexSize = memtable.getKeysCapacity() + 12 * memtable.getUniqueKeysCount();
         int memtableSize = memtable.getTotalBytesCapacity();
-        int alignedMemtableSize = Integer.highestOneBit(memtableSize) * 2;
 
-        ByteBuffer indexBuffer = ByteBuffer.allocate(alignedIndexBufferSize);
-        ByteBuffer sstBuffer = ByteBuffer.allocate(alignedMemtableSize);
+        ByteBuffer indexBuffer = ByteBuffer.allocate(indexSize);
+        ByteBuffer sstBuffer = ByteBuffer.allocate(memtableSize);
 
         NavigableMap<ByteBuffer, KeyInfo> indexKeys = new TreeMap<>();
 

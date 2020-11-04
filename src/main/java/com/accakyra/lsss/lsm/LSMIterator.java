@@ -39,13 +39,11 @@ public class LSMIterator implements Iterator<Record> {
         }
     }
 
-    private ReadWriteLock mutex;
     private List<Iterator<Record>> iterators;
     private Queue<IterRecord> heap;
     private IterRecord current;
 
-    public LSMIterator(List<Iterator<Record>> iterators, ReadWriteLock mutex) {
-        this.mutex = mutex;
+    public LSMIterator(List<Iterator<Record>> iterators) {
         this.iterators = iterators;
         this.heap = new PriorityQueue<>();
 
@@ -69,7 +67,6 @@ public class LSMIterator implements Iterator<Record> {
 
     @Override
     public Record next() {
-        mutex.readLock().lock();
         Record record = new Record(current.getRecord().getKey(), current.getRecord().getValue());
         if (!heap.isEmpty()) {
             IterRecord next = heap.poll();
@@ -86,7 +83,6 @@ public class LSMIterator implements Iterator<Record> {
         } else {
             current = null;
         }
-        mutex.readLock().unlock();
         return record;
     }
 }
