@@ -3,7 +3,9 @@ package com.accakyra.lsss;
 import com.accakyra.lsss.lsm.Config;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -136,7 +138,7 @@ class PersistenceTest extends TestBase {
         }
     }
 
-    @RepeatedTest(3)
+    @RepeatedTest(10)
     void manyRecords() throws IOException {
         final int recordsCount = 10_000;
         final Map<ByteBuffer, ByteBuffer> records = new HashMap<>(recordsCount);
@@ -146,8 +148,8 @@ class PersistenceTest extends TestBase {
                 ByteBuffer key = randomKey();
                 ByteBuffer value = randomValue();
                 dao.upsert(key, value);
-
                 records.put(key, value);
+
                 assertEquals(value, dao.get(key));
             }
             for (Map.Entry<ByteBuffer, ByteBuffer> record : records.entrySet()) {
@@ -156,7 +158,7 @@ class PersistenceTest extends TestBase {
         }
     }
 
-    @RepeatedTest(3)
+    @RepeatedTest(10)
     void manyRecordsAfterClose() throws IOException {
         final int recordsCount = 10_000;
         final Map<ByteBuffer, ByteBuffer> records = new HashMap<>(recordsCount);
@@ -166,8 +168,8 @@ class PersistenceTest extends TestBase {
                 ByteBuffer key = randomKey();
                 ByteBuffer value = randomValue();
                 dao.upsert(key, value);
-
                 records.put(key, value);
+
                 assertEquals(value, dao.get(key));
             }
         }

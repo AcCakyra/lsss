@@ -6,9 +6,11 @@ import java.util.NavigableSet;
 
 public class Index {
 
+    private final int level;
     private final NavigableMap<ByteBuffer, KeyInfo> keys;
 
-    public Index(NavigableMap<ByteBuffer, KeyInfo> keyInfos) {
+    public Index(int level, NavigableMap<ByteBuffer, KeyInfo> keyInfos) {
+        this.level = level;
         this.keys = keyInfos;
     }
 
@@ -18,5 +20,9 @@ public class Index {
 
     public NavigableSet<ByteBuffer> keys() {
         return keys.navigableKeySet();
+    }
+
+    public int getLevel() {
+        return level;
     }
 }

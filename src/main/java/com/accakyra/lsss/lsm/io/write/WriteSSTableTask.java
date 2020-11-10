@@ -1,6 +1,8 @@
 package com.accakyra.lsss.lsm.io.write;
 
-import com.accakyra.lsss.lsm.Metadata;
+import com.accakyra.lsss.lsm.storage.Index;
+import com.accakyra.lsss.lsm.storage.Level;
+import com.accakyra.lsss.lsm.storage.SST;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 
 import java.io.IOException;
@@ -8,29 +10,41 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.file.Path;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class WriteSSTableTask implements Runnable {
 
     private final ByteBuffer sstBuffer;
     private final ByteBuffer indexBuffer;
-    private final Path dataPath;
-    private final Metadata metaData;
+    private final int id;
+    private final Path folderPath;
+    private final Level level;
+    private final Index index;
+    private final ReentrantReadWriteLock lock;
 
-    public WriteSSTableTask(ByteBuffer sstBuffer, ByteBuffer indexBuffer, Path dataPath, Metadata metaData) {
+    public WriteSSTableTask(ByteBuffer sstBuffer, ByteBuffer indexBuffer,
+                            int id, Path folderPath, Level level,
+                            Index index, ReentrantReadWriteLock lock) {
         this.sstBuffer = sstBuffer;
         this.indexBuffer = indexBuffer;
-        this.dataPath = dataPath;
-        this.metaData = metaData;
+        this.id = id;
+        this.folderPath = folderPath;
+        this.level = level;
+        this.index = index;
+        this.lock = lock;
     }
 
     @Override
     public void run() {
-        int generation = metaData.getSstGeneration();
-        Path sstableFileName = FileNameUtil.buildSstableFileName(dataPath, generation);
-        Path indexFileName = FileNameUtil.buildIndexFileName(dataPath, generation);
+        Path sstableFileName = FileNameUtil.buildSstableFileName(folderPath, id);
+        Path indexFileName = FileNameUtil.buildIndexFileName(folderPath, id);
         flushFile(sstableFileName, sstBuffer);
         flushFile(indexFileName, indexBuffer);
-        metaData.incrementSstGeneration();
+
+        SST sst = new SST(index, id, sstableFileName);
+        lock.writeLock().lock();
+        level.add(sst);
+        lock.writeLock().unlock();
     }
 
     private void flushFile(Path fullFileName, ByteBuffer data) {

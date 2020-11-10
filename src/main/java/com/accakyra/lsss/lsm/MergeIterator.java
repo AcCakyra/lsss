@@ -8,7 +8,7 @@ import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.locks.ReadWriteLock;
 
-public class LSMIterator implements Iterator<Record> {
+public class MergeIterator implements Iterator<Record> {
 
     private class IterRecord implements Comparable<IterRecord> {
 
@@ -43,7 +43,7 @@ public class LSMIterator implements Iterator<Record> {
     private Queue<IterRecord> heap;
     private IterRecord current;
 
-    public LSMIterator(List<Iterator<Record>> iterators) {
+    public MergeIterator(List<Iterator<Record>> iterators) {
         this.iterators = iterators;
         this.heap = new PriorityQueue<>();
 

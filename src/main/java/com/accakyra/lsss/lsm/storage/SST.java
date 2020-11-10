@@ -2,7 +2,6 @@ package com.accakyra.lsss.lsm.storage;
 
 import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.io.read.FileReader;
-import com.accakyra.lsss.lsm.util.FileNameUtil;
 
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
@@ -12,18 +11,28 @@ import java.util.SortedSet;
 public class SST implements Resource {
 
     private final Index index;
-    private final Path filePath;
+    private final Path fileName;
+    private final int id;
 
-    public SST(Index index, int generation, Path folderName) {
+    public SST(Index index, int id, Path fileName) {
         this.index = index;
-        this.filePath = FileNameUtil.buildSstableFileName(folderName, generation);
+        this.fileName = fileName;
+        this.id = id;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public int getLevel() {
+        return index.getLevel();
     }
 
     @Override
     public Record get(ByteBuffer key) {
         KeyInfo keyInfo = index.getKeyInfo(key);
         if (keyInfo == null) return null;
-        ByteBuffer value = FileReader.read(filePath, keyInfo.getOffset(), keyInfo.getValueSize());
+        ByteBuffer value = FileReader.read(fileName, keyInfo.getOffset(), keyInfo.getValueSize());
         return new Record(key, value);
     }
 
@@ -51,7 +60,7 @@ public class SST implements Resource {
                 .stream()
                 .map(key -> {
                     KeyInfo keyInfo = index.getKeyInfo(key);
-                    ByteBuffer value = FileReader.read(filePath, keyInfo.getOffset(), keyInfo.getValueSize());
+                    ByteBuffer value = FileReader.read(fileName, keyInfo.getOffset(), keyInfo.getValueSize());
                     return new Record(key, value);
                 })
                 .iterator();

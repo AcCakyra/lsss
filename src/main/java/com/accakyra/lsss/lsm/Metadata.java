@@ -1,3 +1,4 @@
+
 package com.accakyra.lsss.lsm;
 
 import com.accakyra.lsss.lsm.util.FileNameUtil;
@@ -9,14 +10,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Metadata implements Closeable {
 
     private final File data;
-    private AtomicInteger sstGeneration;
-    private AtomicInteger indexGeneration;
+    private AtomicInteger tableId;
 
     public Metadata(File data) {
         this.data = data;
-        int generation = open(data);
-        this.sstGeneration = new AtomicInteger(generation);
-        this.indexGeneration = new AtomicInteger(generation);
+        this.tableId = new AtomicInteger(open(data));
     }
 
     public int open(File data) {
@@ -33,17 +31,8 @@ public class Metadata implements Closeable {
         return 0;
     }
 
-    public int getSstGeneration() {
-        return sstGeneration.get();
-    }
-
-    public int getAndIncrementIndexGeneration() {
-        return indexGeneration.getAndIncrement();
-    }
-
-    public void incrementSstGeneration() {
-        sstGeneration.incrementAndGet();
-        flush();
+    public int getAndIncrementTableId() {
+        return tableId.getAndIncrement();
     }
 
     @Override
@@ -54,7 +43,7 @@ public class Metadata implements Closeable {
     private void flush() {
         Path metadataFileName = FileNameUtil.buildMetaDataFileName(data.toPath());
         try (DataOutputStream output = new DataOutputStream(new FileOutputStream(metadataFileName.toString()))) {
-            output.writeInt(sstGeneration.get());
+            output.writeInt(tableId.get());
             output.flush();
         } catch (IOException e) {
             e.printStackTrace();
