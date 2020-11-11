@@ -4,6 +4,7 @@ import com.accakyra.lsss.DAO;
 import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
 import com.accakyra.lsss.lsm.data.Resource;
+import com.accakyra.lsss.lsm.data.persistent.Level;
 import com.accakyra.lsss.lsm.data.persistent.Levels;
 
 import java.io.File;
@@ -50,15 +51,15 @@ public class LSMTree implements DAO {
         if (record == null) {
             record = immtable.get(key);
             if (record == null) {
-                record = levels.getLevels().stream()
-                        .filter(level -> level.contains(key))
-                        .findFirst()
-                        .map(level -> level.get(key))
-                        .orElse(null);
+                for (Level level : levels.getLevels()) {
+                    record = level.get(key);
+                    if (record != null) break;
+                }
             }
         }
         lock.readLock().unlock();
         return extractValue(record);
+
     }
 
     @Override

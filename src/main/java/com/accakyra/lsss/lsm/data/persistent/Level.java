@@ -22,10 +22,6 @@ public class Level implements Resource {
         this.ssts = ssts;
     }
 
-    public boolean contains(ByteBuffer key) {
-        return ssts.stream().anyMatch(sst -> sst.contains(key));
-    }
-
     public void add(SST sst) {
         ssts.add(sst);
     }
