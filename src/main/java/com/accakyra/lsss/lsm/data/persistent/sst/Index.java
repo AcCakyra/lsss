@@ -1,4 +1,4 @@
-package com.accakyra.lsss.lsm.storage;
+package com.accakyra.lsss.lsm.data.persistent.sst;
 
 import java.nio.ByteBuffer;
 import java.util.NavigableMap;

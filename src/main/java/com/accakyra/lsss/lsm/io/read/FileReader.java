@@ -14,8 +14,8 @@ public class FileReader {
             return readFileChannel(channel, 0, channel.size());
         } catch (IOException e) {
             e.printStackTrace();
-            return null;
         }
+        return null;
     }
 
     public static ByteBuffer read(Path fileName, int offset, int length) {
@@ -23,8 +23,8 @@ public class FileReader {
             return readFileChannel(channel, offset, length);
         } catch (IOException e) {
             e.printStackTrace();
-            return null;
         }
+        return null;
     }
 
     private static ByteBuffer readFileChannel(FileChannel channel, int offset, long length) throws IOException {

@@ -1,7 +1,8 @@
-package com.accakyra.lsss.lsm.storage;
+package com.accakyra.lsss.lsm.data.persistent.sst;
 
 import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.io.read.FileReader;
+import com.accakyra.lsss.lsm.data.Resource;
 
 import java.nio.ByteBuffer;
 import java.nio.file.Path;

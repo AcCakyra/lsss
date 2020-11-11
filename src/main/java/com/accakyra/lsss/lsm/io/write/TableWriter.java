@@ -1,7 +1,8 @@
 package com.accakyra.lsss.lsm.io.write;
 
-import com.accakyra.lsss.lsm.storage.Index;
-import com.accakyra.lsss.lsm.storage.Level;
+import com.accakyra.lsss.lsm.data.persistent.sst.Index;
+import com.accakyra.lsss.lsm.data.persistent.Level;
+import com.accakyra.lsss.lsm.data.persistent.sst.Table;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
@@ -18,12 +19,10 @@ public class TableWriter implements Closeable {
         this.writer = Executors.newSingleThreadExecutor();
     }
 
-    public void flushMemtable(ByteBuffer sstBuffer, ByteBuffer indexBuffer,
-                              int tableId, Path path, Level level, Index index,
+    public void flushMemtable(Table table, int tableId, Path path, Level level, Index index,
                               ReentrantReadWriteLock lock) {
         waitUntilMemtableIsFlushed();
-        WriteSSTableTask writeSSTableTask = new WriteSSTableTask(sstBuffer, indexBuffer,
-                tableId, path, level, index, lock);
+        WriteSSTableTask writeSSTableTask = new WriteSSTableTask(table, tableId, path, level, index, lock);
         flushTaskResult = writer.submit(writeSSTableTask);
     }
 

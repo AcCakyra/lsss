@@ -1,4 +1,4 @@
-package com.accakyra.lsss.lsm.storage;
+package com.accakyra.lsss.lsm.data.persistent.sst;
 
 public class KeyInfo {
 

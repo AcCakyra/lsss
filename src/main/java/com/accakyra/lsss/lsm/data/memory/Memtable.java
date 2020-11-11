@@ -1,7 +1,8 @@
-package com.accakyra.lsss.lsm.storage;
+package com.accakyra.lsss.lsm.data.memory;
 
 import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.Config;
+import com.accakyra.lsss.lsm.data.Resource;
 
 import java.nio.ByteBuffer;
 import java.util.*;
@@ -9,34 +10,6 @@ import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Memtable implements Resource {
-
-    private class SnapshotKey implements Comparable<SnapshotKey> {
-        private final ByteBuffer key;
-        private final int snapshot;
-
-        public SnapshotKey(ByteBuffer key, int snapshot) {
-            this.key = key;
-            this.snapshot = snapshot;
-        }
-
-        public ByteBuffer getKey() {
-            return key;
-        }
-
-        public int getSnapshot() {
-            return snapshot;
-        }
-
-        @Override
-        public int compareTo(SnapshotKey o) {
-            int compare = key.compareTo(o.getKey());
-            if (compare == 0) {
-                return o.getSnapshot() - snapshot;
-            } else {
-                return compare;
-            }
-        }
-    }
 
     private final NavigableMap<SnapshotKey, ByteBuffer> memtable;
     private AtomicInteger snapshot;
@@ -116,14 +89,14 @@ public class Memtable implements Resource {
 
         public MemtableIterator(SnapshotKey from) {
             this.current = from;
-            this.snapshot = from.snapshot;
+            this.snapshot = from.getSnapshot();
             current = memtable.ceilingKey(from);
         }
 
         public MemtableIterator(SnapshotKey from, SnapshotKey to) {
             this.current = from;
             this.to = to;
-            this.snapshot = from.snapshot;
+            this.snapshot = from.getSnapshot();
             current = memtable.ceilingKey(from);
         }
 

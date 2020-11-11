@@ -1,9 +1,13 @@
-package com.accakyra.lsss.lsm;
+package com.accakyra.lsss.lsm.data.persistent;
 
 import com.accakyra.lsss.Record;
+import com.accakyra.lsss.lsm.data.memory.Memtable;
+import com.accakyra.lsss.lsm.data.persistent.sst.Index;
+import com.accakyra.lsss.lsm.data.persistent.sst.KeyInfo;
+import com.accakyra.lsss.lsm.data.persistent.sst.SST;
+import com.accakyra.lsss.lsm.data.persistent.sst.Table;
 import com.accakyra.lsss.lsm.io.read.FileReader;
 import com.accakyra.lsss.lsm.io.write.TableWriter;
-import com.accakyra.lsss.lsm.storage.*;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 
 import java.io.File;
@@ -15,15 +19,7 @@ import java.util.stream.Collectors;
 
 public class TableManager {
 
-    private final File data;
-    private final TableWriter writer;
-
-    public TableManager(File data) {
-        this.data = data;
-        this.writer = new TableWriter();
-    }
-
-    public void flush(Level level, ReentrantReadWriteLock lock, Memtable memtable, int tableId) {
+    public Table convertMemtableToTable(Memtable memtable) {
         // Overall size of index file is:
         // 4 bytes for level
         // + (4 bytes for storing length of key
@@ -61,13 +57,12 @@ public class TableManager {
 
         sstBuffer.flip();
         indexBuffer.flip();
-        Index index = new Index(0, indexKeys);
 
-        writer.flushMemtable(sstBuffer, indexBuffer, tableId, data.toPath(), level, index, lock);
+        return new Table(indexBuffer, sstBuffer, indexKeys);
     }
 
-    public Map<Integer, Level> readLevels() {
-        Map<Integer, List<SST>> sstMap = readSSTs()
+    public Map<Integer, Level> readLevels(File data) {
+        Map<Integer, List<SST>> sstMap = readSSTs(data)
                 .stream()
                 .collect(Collectors.groupingBy(SST::getLevel));
 
@@ -81,8 +76,8 @@ public class TableManager {
         return levels;
     }
 
-    private List<SST> readSSTs() {
-        List<Integer> tableIds = findAllTableIds();
+    private List<SST> readSSTs(File data) {
+        List<Integer> tableIds = findAllTableIds(data);
         List<SST> ssts = new ArrayList<>();
         for (int id : tableIds) {
             Path indexFileName = FileNameUtil.buildIndexFileName(data.toPath(), id);
@@ -94,7 +89,7 @@ public class TableManager {
         return ssts;
     }
 
-    private List<Integer> findAllTableIds() {
+    private List<Integer> findAllTableIds(File data) {
         return Arrays.stream(data.listFiles())
                 .map(File::getName)
                 .filter(FileNameUtil::isSstableFileName)
@@ -117,9 +112,5 @@ public class TableManager {
             keys.put(keyBuffer, new KeyInfo(offset, valueSize));
         }
         return new Index(level, keys);
-    }
-
-    public void close() {
-        writer.close();
     }
 }
