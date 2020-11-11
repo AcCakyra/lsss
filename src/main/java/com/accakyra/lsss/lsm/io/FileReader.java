@@ -1,4 +1,4 @@
-package com.accakyra.lsss.lsm.io.read;
+package com.accakyra.lsss.lsm.io;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;

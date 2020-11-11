@@ -1,7 +1,7 @@
 package com.accakyra.lsss.lsm.data.persistent;
 
-import com.accakyra.lsss.lsm.io.read.FileReader;
-import com.accakyra.lsss.lsm.io.write.FileWriter;
+import com.accakyra.lsss.lsm.io.FileReader;
+import com.accakyra.lsss.lsm.io.FileWriter;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 
 import java.io.*;
@@ -16,10 +16,10 @@ public class Metadata implements Closeable {
 
     public Metadata(File data) {
         fileName = FileNameUtil.buildMetaDataFileName(data.toPath());
-        maxTableId = new AtomicInteger(readMaxTableId());
+        maxTableId = new AtomicInteger(readTableId());
     }
 
-    public int readMaxTableId() {
+    public int readTableId() {
         File metadata = new File(fileName.toString());
         if (metadata.exists()) {
             ByteBuffer idBuffer = FileReader.read(fileName);

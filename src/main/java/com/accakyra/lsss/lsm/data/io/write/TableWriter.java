@@ -1,14 +1,13 @@
-package com.accakyra.lsss.lsm.io.write;
+package com.accakyra.lsss.lsm.data.io.write;
 
-import com.accakyra.lsss.lsm.data.persistent.sst.Index;
 import com.accakyra.lsss.lsm.data.persistent.Level;
-import com.accakyra.lsss.lsm.data.persistent.sst.Table;
+import com.accakyra.lsss.lsm.data.persistent.sst.SST;
+import com.accakyra.lsss.lsm.data.io.Table;
 
 import java.io.Closeable;
-import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.concurrent.*;
-import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.concurrent.locks.Lock;
 
 public class TableWriter implements Closeable {
 
@@ -19,11 +18,10 @@ public class TableWriter implements Closeable {
         this.writer = Executors.newSingleThreadExecutor();
     }
 
-    public void flushMemtable(Table table, int tableId, Path path, Level level, Index index,
-                              ReentrantReadWriteLock lock) {
+    public void flushTable(Table table, Path storagePath, SST sst, Lock lock, Level level) {
         waitUntilMemtableIsFlushed();
-        WriteSSTableTask writeSSTableTask = new WriteSSTableTask(table, tableId, path, level, index, lock);
-        flushTaskResult = writer.submit(writeSSTableTask);
+        AddSSTTask addSSTTask = new AddSSTTask(table, storagePath, sst, lock, level);
+        flushTaskResult = writer.submit(addSSTTask);
     }
 
     private void waitUntilMemtableIsFlushed() {

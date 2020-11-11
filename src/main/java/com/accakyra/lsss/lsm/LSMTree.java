@@ -24,8 +24,8 @@ public class LSMTree implements DAO {
 
     private Memtable memtable;
     private Memtable immtable;
-    private ReadWriteLock lock;
-    private Levels levels;
+    private final ReadWriteLock lock;
+    private final Levels levels;
 
     public LSMTree(File data) {
         memtable = new Memtable();
@@ -59,7 +59,6 @@ public class LSMTree implements DAO {
         }
         lock.readLock().unlock();
         return extractValue(record);
-
     }
 
     @Override
@@ -114,7 +113,7 @@ public class LSMTree implements DAO {
     }
 
     private void createNewMemtable() {
-        levels.flushMemtable(memtable);
+        levels.writeMemtable(memtable);
         immtable = memtable;
         memtable = new Memtable();
     }
