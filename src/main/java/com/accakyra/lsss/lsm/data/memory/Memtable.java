@@ -12,13 +12,13 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class Memtable implements Resource {
 
     private final NavigableMap<SnapshotKey, ByteBuffer> memtable;
-    private AtomicInteger snapshot;
+    private final AtomicInteger snapshot;
     private int keysCapacity;
     private int valuesCapacity;
     private int uniqueKeysCount;
 
     public Memtable() {
-        this.memtable = new ConcurrentSkipListMap<>();
+        this.memtable = new TreeMap<>();
         this.snapshot = new AtomicInteger();
     }
 
