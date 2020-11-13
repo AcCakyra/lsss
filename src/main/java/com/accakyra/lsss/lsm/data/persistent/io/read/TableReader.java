@@ -1,4 +1,4 @@
-package com.accakyra.lsss.lsm.data.io.read;
+package com.accakyra.lsss.lsm.data.persistent.io.read;
 
 import com.accakyra.lsss.lsm.data.persistent.Level;
 import com.accakyra.lsss.lsm.data.TableConverter;
@@ -24,7 +24,9 @@ public class TableReader {
             int level = ssts.getKey();
             List<SST> sstList = ssts.getValue();
             sstList.sort(Comparator.comparingInt(SST::getId).reversed());
-            levels.put(level, new Level(sstList));
+            Level newLevel = new Level();
+            newLevel.add(sstList);
+            levels.put(level, newLevel);
         }
 
         if (levels.isEmpty()) {

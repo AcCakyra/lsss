@@ -157,7 +157,7 @@ public class InMemoryTest extends TestBase {
     void rangeIteration() throws IOException {
         try (DAO dao = createDao()) {
             int count = 100;
-            NavigableMap<ByteBuffer, ByteBuffer> map = new TreeMap<>();
+            TreeMap<ByteBuffer, ByteBuffer> map = new TreeMap<>();
             for (int i = 0; i < count; i++) {
                 ByteBuffer key = randomKey();
                 ByteBuffer value = randomValue();

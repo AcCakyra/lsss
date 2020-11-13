@@ -23,13 +23,11 @@ public class LSMTree implements DAO {
     public static ByteBuffer TOMBSTONE = ByteBuffer.wrap("TTTT".getBytes());
 
     private Memtable memtable;
-    private Memtable immtable;
-    private final ReadWriteLock lock;
     private final Levels levels;
+    private final ReadWriteLock lock;
 
     public LSMTree(File data) {
         memtable = new Memtable();
-        immtable = new Memtable();
         levels = new Levels(data);
         lock = new ReentrantReadWriteLock();
     }
@@ -38,7 +36,7 @@ public class LSMTree implements DAO {
     public void upsert(ByteBuffer key, ByteBuffer value) {
         lock.writeLock().lock();
         if (!memtable.canStore(key, value)) {
-            createNewMemtable();
+            writeMemtable();
         }
         memtable.upsert(key, value);
         lock.writeLock().unlock();
@@ -49,12 +47,9 @@ public class LSMTree implements DAO {
         lock.readLock().lock();
         Record record = memtable.get(key);
         if (record == null) {
-            record = immtable.get(key);
-            if (record == null) {
-                for (Level level : levels.getLevels()) {
-                    record = level.get(key);
-                    if (record != null) break;
-                }
+            for (Resource resource : levels.getLevels()) {
+                record = resource.get(key);
+                if (record != null) break;
             }
         }
         lock.readLock().unlock();
@@ -71,8 +66,7 @@ public class LSMTree implements DAO {
         List<Iterator<Record>> iterators = new ArrayList<>();
         lock.readLock().lock();
         iterators.add(memtable.iterator());
-        iterators.add(immtable.iterator());
-        for (Resource level : levels.getLevels()) iterators.add(level.iterator());
+        for (Resource resource : levels.getLevels()) iterators.add(resource.iterator());
         lock.readLock().unlock();
         return new MergeIterator(iterators);
     }
@@ -82,8 +76,7 @@ public class LSMTree implements DAO {
         List<Iterator<Record>> iterators = new ArrayList<>();
         lock.readLock().lock();
         iterators.add(memtable.iterator(from));
-        iterators.add(immtable.iterator(from));
-        for (Resource level : levels.getLevels()) iterators.add(level.iterator(from));
+        for (Resource resource : levels.getLevels()) iterators.add(resource.iterator(from));
         lock.readLock().unlock();
         return new MergeIterator(iterators);
     }
@@ -93,8 +86,7 @@ public class LSMTree implements DAO {
         List<Iterator<Record>> iterators = new ArrayList<>();
         lock.readLock().lock();
         iterators.add(memtable.iterator(from, to));
-        iterators.add(immtable.iterator(from, to));
-        for (Resource level : levels.getLevels()) iterators.add(level.iterator(from, to));
+        for (Resource resource : levels.getLevels()) iterators.add(resource.iterator(from, to));
         lock.readLock().unlock();
         return new MergeIterator(iterators);
     }
@@ -107,14 +99,13 @@ public class LSMTree implements DAO {
     @Override
     public void close() {
         lock.writeLock().lock();
-        createNewMemtable();
+        writeMemtable();
         levels.close();
         lock.writeLock().unlock();
     }
 
-    private void createNewMemtable() {
+    private void writeMemtable() {
         levels.writeMemtable(memtable);
-        immtable = memtable;
         memtable = new Memtable();
     }
 }

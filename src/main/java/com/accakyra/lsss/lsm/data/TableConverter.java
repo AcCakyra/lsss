@@ -5,7 +5,7 @@ import com.accakyra.lsss.lsm.data.memory.Memtable;
 import com.accakyra.lsss.lsm.data.persistent.sst.Index;
 import com.accakyra.lsss.lsm.data.persistent.sst.KeyInfo;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
-import com.accakyra.lsss.lsm.data.io.Table;
+import com.accakyra.lsss.lsm.data.persistent.io.Table;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 
 import java.nio.ByteBuffer;
