@@ -28,7 +28,7 @@ public class Levels implements Closeable {
     private final Map<Integer, Memtable> immtables;
     private final ExecutorService writer;
     private volatile boolean workerFlag;
-    private Future<?> workerResult;
+    private final Future<?> workerResult;
 
     public Levels(File data) {
         this.tableWriter = new TableWriter();
@@ -38,7 +38,7 @@ public class Levels implements Closeable {
         this.storagePath = data.toPath();
         this.levels = tableReader.readLevels(data);
         this.immtablesId = new LinkedBlockingQueue<>(Config.MAX_MEMTABLE_COUNT);
-        this.immtables = new ConcurrentHashMap<>();
+        this.immtables = new HashMap<>();
         this.workerFlag = true;
         this.writer = Executors.newSingleThreadExecutor();
 
@@ -46,7 +46,9 @@ public class Levels implements Closeable {
             while (workerFlag || immtablesId.remainingCapacity() < Config.MAX_MEMTABLE_COUNT) {
                 try {
                     int tableId = immtablesId.take();
+                    levelsLock.readLock().lock();
                     Memtable memtable = immtables.get(tableId);
+                    levelsLock.readLock().unlock();
 
                     Table table = TableConverter.convertMemtableToTable(memtable, tableId);
                     tableWriter.flushTable(table, storagePath);
@@ -63,17 +65,20 @@ public class Levels implements Closeable {
         });
     }
 
-    public List<Resource> getLevels() {
-        List<Resource> levelsList = new ArrayList<>(immtables.values());
+    public List<Resource> getAllResources() {
+        List<Resource> levelsList = new ArrayList<>();
         levelsLock.readLock().lock();
+        levelsList.addAll(immtables.values());
         levelsList.addAll(levels.values());
         levelsLock.readLock().unlock();
         return levelsList;
     }
 
-    public void writeMemtable(Memtable memtable) {
+    public void putResource(Memtable memtable) {
         int tableId = metadata.getAndIncrementTableId();
+        levelsLock.writeLock().lock();
         immtables.put(tableId, memtable);
+        levelsLock.writeLock().unlock();
 
         try {
             immtablesId.put(tableId);

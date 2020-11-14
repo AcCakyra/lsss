@@ -4,7 +4,6 @@ import com.accakyra.lsss.DAO;
 import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
 import com.accakyra.lsss.lsm.data.Resource;
-import com.accakyra.lsss.lsm.data.persistent.Level;
 import com.accakyra.lsss.lsm.data.persistent.Levels;
 
 import java.io.File;
@@ -47,7 +46,7 @@ public class LSMTree implements DAO {
         lock.readLock().lock();
         Record record = memtable.get(key);
         if (record == null) {
-            for (Resource resource : levels.getLevels()) {
+            for (Resource resource : levels.getAllResources()) {
                 record = resource.get(key);
                 if (record != null) break;
             }
@@ -66,7 +65,7 @@ public class LSMTree implements DAO {
         List<Iterator<Record>> iterators = new ArrayList<>();
         lock.readLock().lock();
         iterators.add(memtable.iterator());
-        for (Resource resource : levels.getLevels()) iterators.add(resource.iterator());
+        for (Resource resource : levels.getAllResources()) iterators.add(resource.iterator());
         lock.readLock().unlock();
         return new MergeIterator(iterators);
     }
@@ -76,7 +75,7 @@ public class LSMTree implements DAO {
         List<Iterator<Record>> iterators = new ArrayList<>();
         lock.readLock().lock();
         iterators.add(memtable.iterator(from));
-        for (Resource resource : levels.getLevels()) iterators.add(resource.iterator(from));
+        for (Resource resource : levels.getAllResources()) iterators.add(resource.iterator(from));
         lock.readLock().unlock();
         return new MergeIterator(iterators);
     }
@@ -86,7 +85,7 @@ public class LSMTree implements DAO {
         List<Iterator<Record>> iterators = new ArrayList<>();
         lock.readLock().lock();
         iterators.add(memtable.iterator(from, to));
-        for (Resource resource : levels.getLevels()) iterators.add(resource.iterator(from, to));
+        for (Resource resource : levels.getAllResources()) iterators.add(resource.iterator(from, to));
         lock.readLock().unlock();
         return new MergeIterator(iterators);
     }
@@ -105,7 +104,7 @@ public class LSMTree implements DAO {
     }
 
     private void writeMemtable() {
-        levels.writeMemtable(memtable);
+        levels.putResource(memtable);
         memtable = new Memtable();
     }
 }
