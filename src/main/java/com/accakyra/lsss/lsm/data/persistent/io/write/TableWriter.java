@@ -8,7 +8,7 @@ import java.nio.file.Path;
 
 public class TableWriter {
 
-    public void flushTable(Table table, Path storagePath) {
+    public static void writeTable(Table table, Path storagePath) {
         Path sstableFileName = FileNameUtil.buildSstableFileName(storagePath, table.getId());
         Path indexFileName = FileNameUtil.buildIndexFileName(storagePath, table.getId());
         FileWriter.write(indexFileName, table.getIndexBuffer());

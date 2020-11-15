@@ -21,6 +21,10 @@ public class SST implements Resource {
         this.id = id;
     }
 
+    public int getLength() {
+        return index.getLength();
+    }
+
     public int getId() {
         return id;
     }
@@ -29,16 +33,16 @@ public class SST implements Resource {
         return index.getLevel();
     }
 
+    public Index getIndex() {
+        return index;
+    }
+
     @Override
     public Record get(ByteBuffer key) {
         KeyInfo keyInfo = index.getKeyInfo(key);
         if (keyInfo == null) return null;
         ByteBuffer value = FileReader.read(fileName, keyInfo.getOffset(), keyInfo.getValueSize());
         return new Record(key, value);
-    }
-
-    public boolean contains(ByteBuffer key) {
-        return index.getKeyInfo(key) != null;
     }
 
     @Override

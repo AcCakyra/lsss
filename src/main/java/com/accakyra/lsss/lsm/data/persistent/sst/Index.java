@@ -9,9 +9,9 @@ public class Index {
     private final int level;
     private final NavigableMap<ByteBuffer, KeyInfo> keys;
 
-    public Index(int level, NavigableMap<ByteBuffer, KeyInfo> keyInfos) {
+    public Index(int level, NavigableMap<ByteBuffer, KeyInfo> keys) {
         this.level = level;
-        this.keys = keyInfos;
+        this.keys = keys;
     }
 
     public KeyInfo getKeyInfo(ByteBuffer key) {
@@ -24,5 +24,10 @@ public class Index {
 
     public int getLevel() {
         return level;
+    }
+
+    public int getLength() {
+        KeyInfo lastKey = keys.lastEntry().getValue();
+        return lastKey.getOffset() + lastKey.getValueSize();
     }
 }

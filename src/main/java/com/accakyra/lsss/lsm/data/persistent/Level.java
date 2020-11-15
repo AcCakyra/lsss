@@ -6,54 +6,61 @@ import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 
 import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.List;
+import java.util.*;
 
 public class Level implements Resource {
 
-    private List<Resource> resources;
+    private final Map<Integer, SST> sstables;
 
     public Level() {
-        this.resources = new ArrayList<>();
+        this.sstables = new TreeMap<>(Comparator.reverseOrder());
     }
 
-    public void add(Resource resource) {
-        resources.add(resource);
+    public void add(SST sst) {
+        sstables.put(sst.getId(), sst);
     }
 
-    public void add(List<? extends Resource> resource) {
-        resources.addAll(resource);
+    public void add(List<SST> sstList) {
+        for (SST sst : sstList) {
+            add(sst);
+        }
     }
 
     @Override
     public Record get(ByteBuffer key) {
-        for (Resource sst : resources) {
+        for (SST sst : sstables.values()) {
             Record record = sst.get(key);
             if (record != null) return record;
         }
         return null;
     }
 
+    public int getSize() {
+        return sstables.size();
+    }
+
+    public Collection<SST> getSstables() {
+        return sstables.values();
+    }
+
     @Override
     public Iterator<Record> iterator() {
         List<Iterator<Record>> iterators = new ArrayList<>();
-        for (Resource sst : resources) iterators.add(sst.iterator());
+        for (SST sst : sstables.values()) iterators.add(sst.iterator());
         return new MergeIterator(iterators);
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from) {
         List<Iterator<Record>> iterators = new ArrayList<>();
-        for (Resource sst : resources) iterators.add(sst.iterator(from));
+        for (SST sst : sstables.values()) iterators.add(sst.iterator(from));
         return new MergeIterator(iterators);
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from, ByteBuffer to) {
         List<Iterator<Record>> iterators = new ArrayList<>();
-        for (Resource sst : resources) iterators.add(sst.iterator(from, to));
+        for (SST sst : sstables.values()) iterators.add(sst.iterator(from, to));
         return new MergeIterator(iterators);
     }
 }

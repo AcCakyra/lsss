@@ -98,7 +98,7 @@ public class LSMTree implements DAO {
     @Override
     public void close() {
         lock.writeLock().lock();
-        writeMemtable();
+        if (!memtable.isEmpty()) writeMemtable();
         levels.close();
         lock.writeLock().unlock();
     }

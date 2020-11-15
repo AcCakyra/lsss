@@ -4,15 +4,17 @@ import com.accakyra.lsss.lsm.io.FileReader;
 import com.accakyra.lsss.lsm.io.FileWriter;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 
-import java.io.*;
+import java.io.Closeable;
+import java.io.File;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class Metadata implements Closeable {
 
-    private AtomicInteger maxTableId;
-    private Path fileName;
+    private final AtomicInteger maxTableId;
+    private final Path fileName;
 
     public Metadata(File data) {
         fileName = FileNameUtil.buildMetaDataFileName(data.toPath());
@@ -20,8 +22,7 @@ public class Metadata implements Closeable {
     }
 
     public int readTableId() {
-        File metadata = new File(fileName.toString());
-        if (metadata.exists()) {
+        if (Files.exists(fileName)) {
             ByteBuffer idBuffer = FileReader.read(fileName);
             if (idBuffer != null) idBuffer.getInt();
         }

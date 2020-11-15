@@ -6,19 +6,17 @@ import com.accakyra.lsss.lsm.data.Resource;
 
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class Memtable implements Resource {
 
     private final NavigableMap<SnapshotKey, ByteBuffer> memtable;
-    private final AtomicInteger snapshot;
+    private int snapshot;
     private int keysCapacity;
     private int valuesCapacity;
     private int uniqueKeysCount;
 
     public Memtable() {
         this.memtable = new TreeMap<>();
-        this.snapshot = new AtomicInteger();
     }
 
     public boolean canStore(ByteBuffer key, ByteBuffer value) {
@@ -27,7 +25,7 @@ public class Memtable implements Resource {
 
     @Override
     public Record get(ByteBuffer key) {
-        SnapshotKey keyToFind = new SnapshotKey(key, snapshot.get());
+        SnapshotKey keyToFind = new SnapshotKey(key, snapshot);
         SnapshotKey recentKey = memtable.ceilingKey(keyToFind);
         if (recentKey != null && recentKey.getKey().equals(key)) {
             ByteBuffer value = memtable.get(recentKey);
@@ -42,7 +40,7 @@ public class Memtable implements Resource {
             keysCapacity += key.limit();
         }
         valuesCapacity += value.limit();
-        SnapshotKey snapshotKey = new SnapshotKey(key, snapshot.getAndIncrement());
+        SnapshotKey snapshotKey = new SnapshotKey(key, snapshot++);
         memtable.put(snapshotKey, value);
     }
 
@@ -58,25 +56,29 @@ public class Memtable implements Resource {
         return uniqueKeysCount;
     }
 
+    public boolean isEmpty() {
+        return getUniqueKeysCount() == 0;
+    }
+
     @Override
     public Iterator<Record> iterator() {
         if (memtable.isEmpty()) {
             return Collections.emptyIterator();
         }
-        SnapshotKey fromKey = new SnapshotKey(memtable.firstKey().getKey(), snapshot.get());
+        SnapshotKey fromKey = new SnapshotKey(memtable.firstKey().getKey(), snapshot);
         return new MemtableIterator(fromKey);
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from) {
-        SnapshotKey fromKey = new SnapshotKey(from, snapshot.get());
+        SnapshotKey fromKey = new SnapshotKey(from, snapshot);
         return new MemtableIterator(fromKey);
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from, ByteBuffer to) {
-        SnapshotKey fromKey = new SnapshotKey(from, snapshot.get());
-        SnapshotKey toKey = new SnapshotKey(to, snapshot.get());
+        SnapshotKey fromKey = new SnapshotKey(from, snapshot);
+        SnapshotKey toKey = new SnapshotKey(to, snapshot);
         return new MemtableIterator(fromKey, toKey);
     }
 
