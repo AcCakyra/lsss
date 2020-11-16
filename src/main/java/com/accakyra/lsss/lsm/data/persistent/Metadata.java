@@ -4,8 +4,7 @@ import com.accakyra.lsss.lsm.io.FileReader;
 import com.accakyra.lsss.lsm.io.FileWriter;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 
-import java.io.Closeable;
-import java.io.File;
+import java.io.*;
 import java.nio.ByteBuffer;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -24,7 +23,9 @@ public class Metadata implements Closeable {
     public int readTableId() {
         if (Files.exists(fileName)) {
             ByteBuffer idBuffer = FileReader.read(fileName);
-            if (idBuffer != null) idBuffer.getInt();
+            if (idBuffer != null) {
+                return idBuffer.getInt();
+            }
         }
         return 0;
     }
@@ -41,6 +42,7 @@ public class Metadata implements Closeable {
     private void flush() {
         ByteBuffer idBuffer = ByteBuffer.allocate(4);
         idBuffer.putInt(maxTableId.get());
+        idBuffer.flip();
         FileWriter.write(fileName, idBuffer);
     }
 }
