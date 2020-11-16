@@ -3,10 +3,14 @@ package com.accakyra.lsss;
 import com.accakyra.lsss.lsm.Config;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.opentest4j.AssertionFailedError;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -14,8 +18,8 @@ class PersistenceTest extends TestBase {
 
     @Test
     void cleanDirectory() throws IOException {
-        final ByteBuffer key = randomKey();
-        final ByteBuffer value = randomValue();
+        ByteBuffer key = randomKey();
+        ByteBuffer value = randomValue();
 
         try (DAO dao = createDao()) {
             dao.upsert(key, value);
@@ -31,8 +35,8 @@ class PersistenceTest extends TestBase {
 
     @Test
     void reopen() throws IOException {
-        final ByteBuffer key = randomKey();
-        final ByteBuffer value = randomValue();
+        ByteBuffer key = randomKey();
+        ByteBuffer value = randomValue();
 
         try (DAO dao = createDao()) {
             dao.upsert(key, value);
@@ -46,8 +50,8 @@ class PersistenceTest extends TestBase {
 
     @Test
     void delete() throws IOException {
-        final ByteBuffer key = randomKey();
-        final ByteBuffer value = randomValue();
+        ByteBuffer key = randomKey();
+        ByteBuffer value = randomValue();
 
         try (DAO dao = createDao()) {
             dao.upsert(key, value);
@@ -65,11 +69,30 @@ class PersistenceTest extends TestBase {
         }
     }
 
+
+    @Test
+    void deleteMany() throws IOException {
+        int tombstonesCount = 100000;
+
+        try (DAO dao = createDao()) {
+            Iterator<ByteBuffer> tombstones =
+                    Stream.generate(TestBase::randomKey)
+                            .limit(tombstonesCount)
+                            .iterator();
+            while (tombstones.hasNext()) {
+                dao.delete(tombstones.next());
+            }
+
+            Iterator<Record> empty = dao.iterator();
+            assertFalse(empty.hasNext());
+        }
+    }
+
     @RepeatedTest(100)
     void replaceWithClose() throws Exception {
-        final ByteBuffer key = randomKey();
-        final ByteBuffer value = randomValue();
-        final ByteBuffer value2 = randomValue();
+        ByteBuffer key = randomKey();
+        ByteBuffer value = randomValue();
+        ByteBuffer value2 = randomValue();
 
         try (DAO dao = createDao()) {
             dao.upsert(key, value);
@@ -89,24 +112,24 @@ class PersistenceTest extends TestBase {
 
     @Test
     void hugeKeys() throws IOException {
-        final int size = Config.MEMTABLE_THRESHOLD;
-        final ByteBuffer payload = randomBuffer(size);
-        final ByteBuffer value = randomValue();
-        final int records = 128;
-        final Collection<ByteBuffer> keys = new ArrayList<>(records);
+        int size = Config.MEMTABLE_THRESHOLD;
+        ByteBuffer payload = randomBuffer(size);
+        ByteBuffer value = randomValue();
+        int records = 128;
+        Collection<ByteBuffer> keys = new ArrayList<>(records);
 
         try (DAO dao = createDao()) {
             for (int i = 0; i < records; i++) {
-                final ByteBuffer key = randomKey();
+                ByteBuffer key = randomKey();
                 keys.add(key);
-                final ByteBuffer hugeKey = join(key, payload);
+                ByteBuffer hugeKey = join(key, payload);
                 dao.upsert(hugeKey, value);
                 assertEquals(value, dao.get(hugeKey));
             }
         }
 
         try (DAO dao = createDao()) {
-            for (final ByteBuffer key : keys) {
+            for (ByteBuffer key : keys) {
                 assertEquals(value, dao.get(join(key, payload)));
             }
         }
@@ -114,15 +137,15 @@ class PersistenceTest extends TestBase {
 
     @Test
     void hugeValues() throws IOException {
-        final int size = Config.MEMTABLE_THRESHOLD;
-        final ByteBuffer suffix = randomBuffer(size);
-        final int records = 128;
-        final Collection<ByteBuffer> keys = new ArrayList<>(records);
+        int size = Config.MEMTABLE_THRESHOLD;
+        ByteBuffer suffix = randomBuffer(size);
+        int records = 128;
+        Collection<ByteBuffer> keys = new ArrayList<>(records);
 
         try (DAO dao = createDao()) {
             for (int i = 0; i < records; i++) {
-                final ByteBuffer key = randomKey();
-                final ByteBuffer value = join(key, suffix);
+                ByteBuffer key = randomKey();
+                ByteBuffer value = join(key, suffix);
                 keys.add(key);
                 dao.upsert(key, value);
                 assertEquals(value, dao.get(key));
@@ -130,7 +153,7 @@ class PersistenceTest extends TestBase {
         }
 
         try (DAO dao = createDao()) {
-            for (final ByteBuffer key : keys) {
+            for (ByteBuffer key : keys) {
                 assertEquals(join(key, suffix), dao.get(key));
             }
         }
@@ -179,19 +202,63 @@ class PersistenceTest extends TestBase {
     }
 
     @Test
-    void replaceManyTimes() throws IOException {
-        final ByteBuffer key = randomKey();
-        final int overwrites = 100;
+    void overwrite() throws IOException {
+        int valueSize = 1024 * 1024;
+        int keyCount = 10;
+        int overwrites = 10;
 
-        for (int i = 0; i < overwrites; i++) {
-            final ByteBuffer value = randomValue();
-            try (DAO dao = createDao()) {
-                dao.upsert(key, value);
-                assertEquals(value, dao.get(key));
+        List<ByteBuffer> keys = new ArrayList<>();
+        for (int i = 0; i < keyCount; i++) {
+            keys.add(randomKey());
+        }
+
+        try (DAO dao = createDao()) {
+            for (int round = 0; round < overwrites; round++) {
+                ByteBuffer payload = randomBuffer(valueSize);
+
+                for (ByteBuffer key : keys) {
+                    ByteBuffer value = join(key, payload);
+                    dao.upsert(key, value);
+                }
+
+                for (ByteBuffer key : keys) {
+                    ByteBuffer value = join(key, payload);
+                    assertEquals(value, dao.get(key));
+                }
+            }
+        }
+    }
+
+    @Test
+    void clear() throws IOException {
+        int valueSize = Config.MEMTABLE_THRESHOLD;
+        int keyCount = 10;
+
+        ByteBuffer value = randomBuffer(valueSize);
+        List<ByteBuffer> keys = new ArrayList<>(keyCount);
+        for (int i = 0; i < keyCount; i++) {
+            keys.add(randomKey());
+        }
+
+        try (DAO dao = createDao()) {
+            for (ByteBuffer key : keys) {
+                dao.upsert(key, join(key, value));
+            }
+        }
+
+        try (DAO dao = createDao()) {
+            for (ByteBuffer key : keys) {
+                assertEquals(join(key, value), dao.get(key));
             }
 
-            try (DAO dao = createDao()) {
-                assertEquals(value, dao.get(key));
+            for (ByteBuffer key : keys) {
+                dao.delete(key);
+            }
+        }
+
+        try (DAO dao = createDao()) {
+            for (ByteBuffer key : keys) {
+                assertThrows(NoSuchElementException.class, () -> dao.get(key));
             }
         }
     }

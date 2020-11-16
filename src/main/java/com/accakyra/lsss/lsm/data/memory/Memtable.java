@@ -19,8 +19,8 @@ public class Memtable implements Resource {
         this.memtable = new TreeMap<>();
     }
 
-    public boolean canStore(ByteBuffer key, ByteBuffer value) {
-        return key.limit() + value.limit() + getTotalBytesCapacity() <= Config.MEMTABLE_THRESHOLD;
+    public boolean hasSpace() {
+        return getTotalBytesCapacity() <= Config.MEMTABLE_THRESHOLD;
     }
 
     @Override
