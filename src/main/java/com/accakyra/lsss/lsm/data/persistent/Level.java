@@ -1,7 +1,7 @@
 package com.accakyra.lsss.lsm.data.persistent;
 
 import com.accakyra.lsss.Record;
-import com.accakyra.lsss.lsm.MergeIterator;
+import com.accakyra.lsss.lsm.MergedIterator;
 import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 
@@ -47,20 +47,20 @@ public class Level implements Resource {
     public Iterator<Record> iterator() {
         List<Iterator<Record>> iterators = new ArrayList<>();
         for (SST sst : sstables.values()) iterators.add(sst.iterator());
-        return new MergeIterator(iterators);
+        return new MergedIterator<>(iterators);
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from) {
         List<Iterator<Record>> iterators = new ArrayList<>();
         for (SST sst : sstables.values()) iterators.add(sst.iterator(from));
-        return new MergeIterator(iterators);
+        return new MergedIterator<>(iterators);
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from, ByteBuffer to) {
         List<Iterator<Record>> iterators = new ArrayList<>();
         for (SST sst : sstables.values()) iterators.add(sst.iterator(from, to));
-        return new MergeIterator(iterators);
+        return new MergedIterator<>(iterators);
     }
 }

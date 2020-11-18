@@ -67,7 +67,7 @@ public class LSMTree implements DAO {
         iterators.add(memtable.iterator());
         for (Resource resource : levels.getAllResources()) iterators.add(resource.iterator());
         lock.readLock().unlock();
-        return new DeletIterator(new MergeIterator(iterators));
+        return new DeletIterator(new MergedIterator<>(iterators));
     }
 
     @Override
@@ -77,7 +77,7 @@ public class LSMTree implements DAO {
         iterators.add(memtable.iterator(from));
         for (Resource resource : levels.getAllResources()) iterators.add(resource.iterator(from));
         lock.readLock().unlock();
-        return new DeletIterator(new MergeIterator(iterators));
+        return new DeletIterator(new MergedIterator<>(iterators));
     }
 
     @Override
@@ -87,7 +87,7 @@ public class LSMTree implements DAO {
         iterators.add(memtable.iterator(from, to));
         for (Resource resource : levels.getAllResources()) iterators.add(resource.iterator(from, to));
         lock.readLock().unlock();
-        return new DeletIterator(new MergeIterator(iterators));
+        return new DeletIterator(new MergedIterator<>(iterators));
     }
 
     private ByteBuffer extractValue(Record record) {

@@ -1,26 +1,20 @@
 package com.accakyra.lsss.lsm;
 
-import com.accakyra.lsss.Record;
+import java.util.*;
 
-import java.util.Iterator;
-import java.util.List;
-import java.util.PriorityQueue;
-import java.util.Queue;
-import java.util.concurrent.locks.ReadWriteLock;
-
-public class MergeIterator implements Iterator<Record> {
+public class MergedIterator<T extends Comparable<T>> implements Iterator<T> {
 
     private class IterRecord implements Comparable<IterRecord> {
 
-        private Record record;
-        private int iter;
+        private final T record;
+        private final int iter;
 
-        public IterRecord(Record record, int iter) {
+        public IterRecord(T record, int iter) {
             this.record = record;
             this.iter = iter;
         }
 
-        public Record getRecord() {
+        public T getRecord() {
             return record;
         }
 
@@ -31,7 +25,7 @@ public class MergeIterator implements Iterator<Record> {
         @Override
         public int compareTo(IterRecord o) {
             int compare = record.compareTo(o.record);
-            if (compare != 0) {
+            if (compare == 0) {
                 return iter - o.getIter();
             } else {
                 return compare;
@@ -39,16 +33,16 @@ public class MergeIterator implements Iterator<Record> {
         }
     }
 
-    private List<Iterator<Record>> iterators;
-    private Queue<IterRecord> heap;
+    private final List<Iterator<T>> iterators;
+    private final Queue<IterRecord> heap;
     private IterRecord current;
 
-    public MergeIterator(List<Iterator<Record>> iterators) {
+    public MergedIterator(List<Iterator<T>> iterators) {
         this.iterators = iterators;
         this.heap = new PriorityQueue<>();
 
         for (int i = 0; i < iterators.size(); i++) {
-            Iterator<Record> iterator = iterators.get(i);
+            Iterator<T> iterator = iterators.get(i);
             if (iterator.hasNext()) heap.add(new IterRecord(iterator.next(), i));
         }
 
@@ -66,8 +60,13 @@ public class MergeIterator implements Iterator<Record> {
     }
 
     @Override
-    public Record next() {
-        Record record = new Record(current.getRecord().getKey(), current.getRecord().getValue());
+    public T next() {
+        T record = current.getRecord();
+        nextRecord();
+        return record;
+    }
+
+    private void nextRecord() {
         if (!heap.isEmpty()) {
             IterRecord next = heap.poll();
             if (iterators.get(next.iter).hasNext()) {
@@ -83,6 +82,5 @@ public class MergeIterator implements Iterator<Record> {
         } else {
             current = null;
         }
-        return record;
     }
 }
