@@ -1,7 +1,7 @@
 package com.accakyra.lsss.lsm.data.persistent;
 
 import com.accakyra.lsss.Record;
-import com.accakyra.lsss.lsm.MergedIterator;
+import com.accakyra.lsss.lsm.util.iterators.MergedIterator;
 import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 

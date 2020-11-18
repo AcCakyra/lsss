@@ -1,15 +1,16 @@
-package com.accakyra.lsss.lsm;
+package com.accakyra.lsss.lsm.util.iterators;
 
 import com.accakyra.lsss.Record;
+import com.accakyra.lsss.lsm.LSMTree;
 
 import java.util.Iterator;
 
-public class DeletIterator implements Iterator<Record> {
+public class RemoveTombstonesIterator implements Iterator<Record> {
 
     private Iterator<Record> iterator;
     private Record current;
 
-    public DeletIterator(Iterator<Record> iterator) {
+    public RemoveTombstonesIterator(Iterator<Record> iterator) {
         this.iterator = iterator;
         nextRecord();
     }
