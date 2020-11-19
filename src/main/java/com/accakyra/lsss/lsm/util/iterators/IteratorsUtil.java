@@ -1,11 +1,12 @@
 package com.accakyra.lsss.lsm.util.iterators;
 
 import com.accakyra.lsss.Record;
+import com.google.common.collect.Iterators;
 
 import java.util.Iterator;
 import java.util.List;
 
-public class Iterators {
+public class IteratorsUtil {
 
     public static <T extends Comparable<T>> MergedIterator<T> mergeIterator(List<Iterator<T>> iterators) {
         return new MergedIterator<>(iterators);
@@ -15,7 +16,7 @@ public class Iterators {
         return new DistinctIterator<>(iterator);
     }
 
-    public static RemoveTombstonesIterator removeTombstonesIterator(Iterator<Record> iterator) {
-        return new RemoveTombstonesIterator(iterator);
+    public static Iterator<Record> removeTombstonesIterator(Iterator<Record> iterator) {
+        return Iterators.filter(iterator, (record) -> !record.getValue().equals(Record.TOMBSTONE));
     }
 }

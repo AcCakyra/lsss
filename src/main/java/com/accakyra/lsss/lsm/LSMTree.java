@@ -5,8 +5,7 @@ import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
 import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.data.persistent.Levels;
-import com.accakyra.lsss.lsm.util.iterators.Iterators;
-import com.accakyra.lsss.lsm.util.iterators.MergedIterator;
+import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -18,10 +17,6 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class LSMTree implements DAO {
-    /**
-     * Special value for deleted keys.
-     */
-    public static ByteBuffer TOMBSTONE = ByteBuffer.wrap("TTTT".getBytes());
 
     private Memtable memtable;
     private final Levels levels;
@@ -59,7 +54,7 @@ public class LSMTree implements DAO {
 
     @Override
     public void delete(ByteBuffer key) {
-        upsert(key, TOMBSTONE);
+        upsert(key, Record.TOMBSTONE);
     }
 
     @Override
@@ -69,9 +64,9 @@ public class LSMTree implements DAO {
         iterators.add(memtable.iterator());
         for (Resource resource : levels.getAllResources()) iterators.add(resource.iterator());
         lock.readLock().unlock();
-        return Iterators.removeTombstonesIterator(
-                Iterators.distinctIterator(
-                        Iterators.mergeIterator(iterators)));
+        return IteratorsUtil.removeTombstonesIterator(
+                IteratorsUtil.distinctIterator(
+                        IteratorsUtil.mergeIterator(iterators)));
     }
 
     @Override
@@ -81,9 +76,9 @@ public class LSMTree implements DAO {
         iterators.add(memtable.iterator(from));
         for (Resource resource : levels.getAllResources()) iterators.add(resource.iterator(from));
         lock.readLock().unlock();
-        return Iterators.removeTombstonesIterator(
-                Iterators.distinctIterator(
-                        Iterators.mergeIterator(iterators)));
+        return IteratorsUtil.removeTombstonesIterator(
+                IteratorsUtil.distinctIterator(
+                        IteratorsUtil.mergeIterator(iterators)));
     }
 
     @Override
@@ -93,13 +88,13 @@ public class LSMTree implements DAO {
         iterators.add(memtable.iterator(from, to));
         for (Resource resource : levels.getAllResources()) iterators.add(resource.iterator(from, to));
         lock.readLock().unlock();
-        return Iterators.removeTombstonesIterator(
-                Iterators.distinctIterator(
-                        Iterators.mergeIterator(iterators)));
+        return IteratorsUtil.removeTombstonesIterator(
+                IteratorsUtil.distinctIterator(
+                        IteratorsUtil.mergeIterator(iterators)));
     }
 
     private ByteBuffer extractValue(Record record) {
-        if (record == null || record.getValue().equals(TOMBSTONE)) throw new NoSuchElementException();
+        if (record == null || record.getValue().equals(Record.TOMBSTONE)) throw new NoSuchElementException();
         else return record.getValue();
     }
 

@@ -4,6 +4,10 @@ import java.nio.ByteBuffer;
 
 public class Record implements Comparable<Record> {
 
+    /**
+     * Special value for deleted keys.
+     */
+    public static final ByteBuffer TOMBSTONE = ByteBuffer.wrap("TTTT".getBytes());
     private final ByteBuffer key;
     private final ByteBuffer value;
 
