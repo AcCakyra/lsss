@@ -3,13 +3,11 @@ package com.accakyra.lsss;
 import com.accakyra.lsss.lsm.Config;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.io.TempDir;
-import org.opentest4j.AssertionFailedError;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -201,7 +199,7 @@ class PersistenceTest extends TestBase {
         }
     }
 
-    @Test
+    @RepeatedTest(10)
     void overwrite() throws IOException {
         int valueSize = 1024 * 1024;
         int keyCount = 10;

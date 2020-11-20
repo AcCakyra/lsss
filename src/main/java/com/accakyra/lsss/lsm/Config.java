@@ -8,9 +8,9 @@ public class Config {
     public final static int MEMTABLE_THRESHOLD = 4 * 1024 * 1024;
 
     /**
-     * Maximum possible count of memtables storing in memory.
+     * Maximum possible count of immtables storing in memory.
      */
-    public final static int MAX_MEMTABLE_COUNT = 1;
+    public final static int MAX_MEMTABLE_COUNT = 10;
 
     /**
      * The size ratio of adjacent levels.

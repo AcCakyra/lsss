@@ -34,18 +34,23 @@ public class TableConverter {
 
         int valueOffset = 0;
         for (Record record : memtable) {
-            byte[] key = record.getKey().array();
-            byte[] value = record.getValue().array();
+            ByteBuffer key = record.getKey();
+            ByteBuffer value = record.getValue();
 
             sstBuffer.put(key);
             sstBuffer.put(value);
 
-            valueOffset += key.length;
-            indexBuffer.putInt(key.length);
+            key.rewind();
+            value.rewind();
+
+            valueOffset += key.capacity();
+            indexBuffer.putInt(key.capacity());
             indexBuffer.put(key);
             indexBuffer.putInt(valueOffset);
-            indexBuffer.putInt(value.length);
-            valueOffset += value.length;
+            indexBuffer.putInt(value.capacity());
+            valueOffset += value.capacity();
+
+            key.rewind();
         }
 
         sstBuffer.flip();

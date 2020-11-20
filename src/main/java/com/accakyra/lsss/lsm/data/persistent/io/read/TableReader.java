@@ -1,7 +1,9 @@
 package com.accakyra.lsss.lsm.data.persistent.io.read;
 
-import com.accakyra.lsss.lsm.data.persistent.Level;
+import com.accakyra.lsss.lsm.data.Run;
 import com.accakyra.lsss.lsm.data.TableConverter;
+import com.accakyra.lsss.lsm.data.persistent.level.Level;
+import com.accakyra.lsss.lsm.data.persistent.level.Level0;
 import com.accakyra.lsss.lsm.data.persistent.sst.Index;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 import com.accakyra.lsss.lsm.io.FileReader;
@@ -14,23 +16,25 @@ import java.util.stream.Collectors;
 
 public class TableReader {
 
-    public Map<Integer, Level> readLevels(File data) {
+    public Map<Integer, Run> readLevels(File data) {
         Map<Integer, List<SST>> sstMap = readSSTs(data)
                 .stream()
                 .collect(Collectors.groupingBy(SST::getLevel));
 
-        Map<Integer, Level> levels = new HashMap<>();
-        for (Map.Entry<Integer, List<SST>> ssts : sstMap.entrySet()) {
-            int level = ssts.getKey();
-            List<SST> sstList = ssts.getValue();
-            sstList.sort(Comparator.comparingInt(SST::getId).reversed());
-            Level newLevel = new Level();
-            newLevel.add(sstList);
-            levels.put(level, newLevel);
+        Map<Integer, Run> levels = new HashMap<>();
+        for (Map.Entry<Integer, List<SST>> storedRun : sstMap.entrySet()) {
+            int level = storedRun.getKey();
+            Run run;
+            if (level == 0) {
+                run = new Level0();
+            } else {
+                run = new Level();
+            }
+            for (SST sst : storedRun.getValue()) run.add(sst);
+            levels.put(level, run);
         }
-
         if (levels.isEmpty()) {
-            levels.put(0, new Level());
+            levels.put(0, new Level0());
         }
         return levels;
     }

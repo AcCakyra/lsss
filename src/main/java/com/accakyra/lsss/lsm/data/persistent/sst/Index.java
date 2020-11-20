@@ -26,8 +26,11 @@ public class Index {
         return level;
     }
 
-    public int getLength() {
-        KeyInfo lastKey = keys.lastEntry().getValue();
-        return lastKey.getOffset() + lastKey.getValueSize();
+    public ByteBuffer firstKey() {
+        return keys.firstKey();
+    }
+
+    public ByteBuffer lastKey() {
+        return keys.lastKey();
     }
 }

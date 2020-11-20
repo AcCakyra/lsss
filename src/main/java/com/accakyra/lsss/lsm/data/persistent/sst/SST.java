@@ -21,10 +21,6 @@ public class SST implements Resource {
         this.id = id;
     }
 
-    public int getLength() {
-        return index.getLength();
-    }
-
     public int getId() {
         return id;
     }
@@ -35,6 +31,10 @@ public class SST implements Resource {
 
     public Index getIndex() {
         return index;
+    }
+
+    public Path getName() {
+        return fileName;
     }
 
     @Override

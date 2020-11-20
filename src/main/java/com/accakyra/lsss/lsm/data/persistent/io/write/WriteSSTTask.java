@@ -1,9 +1,8 @@
-package com.accakyra.lsss.lsm.data.persistent;
+package com.accakyra.lsss.lsm.data.persistent.io.write;
 
-import com.accakyra.lsss.lsm.data.TableConverter;
+import com.accakyra.lsss.lsm.data.Run;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
 import com.accakyra.lsss.lsm.data.persistent.io.Table;
-import com.accakyra.lsss.lsm.data.persistent.io.write.TableWriter;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 
 import java.nio.file.Path;
@@ -13,20 +12,19 @@ import java.util.concurrent.locks.Lock;
 
 public class WriteSSTTask implements Runnable {
 
-    private final Memtable memtable;
-    private final int tableId;
+    private final Table table;
+    private final SST sst;
     private final Path storage;
-    private final Level level;
+    private final Run level;
     private final Map<Integer, Memtable> immtables;
     private final Lock lock;
-    private Semaphore semaphore;
+    private final Semaphore semaphore;
 
-    public WriteSSTTask(Memtable memtable, int tableId,
-                        Path storage, Level level,
-                        Map<Integer, Memtable> immtables,
+    public WriteSSTTask(Table table, SST sst, Path storage,
+                        Run level, Map<Integer, Memtable> immtables,
                         Lock lock, Semaphore semaphore) {
-        this.memtable = memtable;
-        this.tableId = tableId;
+        this.table = table;
+        this.sst = sst;
         this.storage = storage;
         this.level = level;
         this.immtables = immtables;
@@ -36,15 +34,12 @@ public class WriteSSTTask implements Runnable {
 
     @Override
     public void run() {
-        Table table = TableConverter.convertMemtableToTable(memtable, tableId);
         TableWriter.writeTable(table, storage);
-        SST sst = TableConverter.convertMemtableToSST(memtable, tableId, storage);
 
         lock.lock();
         level.add(sst);
-        immtables.remove(tableId);
+        immtables.remove(table.getId());
         lock.unlock();
-
         semaphore.release();
     }
 }
