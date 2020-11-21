@@ -10,26 +10,21 @@ import java.util.*;
 
 public class Level implements Run {
 
-    private final Set<SST> sstables;
+    private final NavigableMap<ByteBuffer, SST> sstables;
 
     public Level() {
-        this.sstables = new TreeSet<>(Comparator.comparing(o -> o.getIndex().firstKey()));
+        this.sstables = new TreeMap<>();
     }
 
     @Override
     public void add(SST sst) {
-        sstables.add(sst);
+        sstables.put(sst.getIndex().firstKey(), sst);
     }
 
     @Override
     public Record get(ByteBuffer key) {
-        for (SST sst : sstables) {
-            Record record = sst.get(key);
-            if (record != null) {
-                return record;
-            }
-        }
-        return null;
+        NavigableMap<ByteBuffer, SST> subMap = subMap(key);
+        return subMap.firstEntry().getValue().get(key);
     }
 
     @Override
@@ -38,28 +33,49 @@ public class Level implements Run {
     }
 
     @Override
-    public Set<SST> getSstables() {
-        return sstables;
+    public Collection<SST> getSstables() {
+        return sstables.values();
     }
 
     @Override
     public Iterator<Record> iterator() {
         List<Iterator<Record>> iterators = new ArrayList<>();
-        for (SST sst : sstables) iterators.add(sst.iterator());
+        for (SST sst : sstables.values()) iterators.add(sst.iterator());
         return Iterators.concat(iterators.iterator());
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from) {
         List<Iterator<Record>> iterators = new ArrayList<>();
-        for (SST sst : sstables) iterators.add(sst.iterator(from));
+        NavigableMap<ByteBuffer, SST> subMap = subMap(from);
+        for (SST sst : subMap.values()) iterators.add(sst.iterator(from));
         return Iterators.concat(iterators.iterator());
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from, ByteBuffer to) {
         List<Iterator<Record>> iterators = new ArrayList<>();
-        for (SST sst : sstables) iterators.add(sst.iterator(from, to));
+        NavigableMap<ByteBuffer, SST> subMap = subMap(from, to);
+        for (SST sst : subMap.values()) iterators.add(sst.iterator(from, to));
         return Iterators.concat(iterators.iterator());
+    }
+
+    private NavigableMap<ByteBuffer, SST> subMap(ByteBuffer from) {
+        ByteBuffer floorKey = sstables.floorKey(from);
+        if (floorKey == null) {
+            return sstables;
+        } else {
+            return sstables.tailMap(floorKey, true);
+        }
+    }
+
+    private NavigableMap<ByteBuffer, SST> subMap(ByteBuffer key, ByteBuffer to) {
+        NavigableMap<ByteBuffer, SST> tailMap = subMap(key);
+        ByteBuffer higherKey = sstables.higherKey(to);
+        if (higherKey == null) {
+            return tailMap;
+        } else {
+            return sstables.headMap(higherKey, false);
+        }
     }
 }
