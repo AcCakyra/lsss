@@ -4,11 +4,17 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.FileVisitResult;
+import java.nio.file.Path;
+import java.nio.file.SimpleFileVisitor;
+import java.nio.file.attribute.BasicFileAttributes;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Iterator;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 
 abstract class TestBase {
 
@@ -62,5 +68,21 @@ abstract class TestBase {
 
     ByteBuffer stringToByteBuffer(String data) {
         return ByteBuffer.wrap(data.getBytes());
+    }
+
+    static long directorySize() throws IOException {
+        final AtomicLong result = new AtomicLong(0L);
+        java.nio.file.Files.walkFileTree(
+                data.toPath(),
+                new SimpleFileVisitor<>() {
+                    @Override
+                    public FileVisitResult visitFile(
+                            Path file,
+                            BasicFileAttributes attrs) {
+                        result.addAndGet(attrs.size());
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+        return result.get();
     }
 }

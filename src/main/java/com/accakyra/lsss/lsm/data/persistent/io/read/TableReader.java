@@ -1,9 +1,9 @@
 package com.accakyra.lsss.lsm.data.persistent.io.read;
 
-import com.accakyra.lsss.lsm.data.Run;
-import com.accakyra.lsss.lsm.data.TableConverter;
 import com.accakyra.lsss.lsm.data.persistent.level.Level;
+import com.accakyra.lsss.lsm.data.TableConverter;
 import com.accakyra.lsss.lsm.data.persistent.level.Level0;
+import com.accakyra.lsss.lsm.data.persistent.level.LevelN;
 import com.accakyra.lsss.lsm.data.persistent.sst.Index;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 import com.accakyra.lsss.lsm.io.FileReader;
@@ -16,19 +16,19 @@ import java.util.stream.Collectors;
 
 public class TableReader {
 
-    public Map<Integer, Run> readLevels(File data) {
+    public static Map<Integer, Level> readLevels(File data) {
         Map<Integer, List<SST>> sstMap = readSSTs(data)
                 .stream()
                 .collect(Collectors.groupingBy(SST::getLevel));
 
-        Map<Integer, Run> levels = new HashMap<>();
+        Map<Integer, Level> levels = new HashMap<>();
         for (Map.Entry<Integer, List<SST>> storedRun : sstMap.entrySet()) {
             int level = storedRun.getKey();
-            Run run;
+            Level run;
             if (level == 0) {
                 run = new Level0();
             } else {
-                run = new Level();
+                run = new LevelN();
             }
             for (SST sst : storedRun.getValue()) run.add(sst);
             levels.put(level, run);
@@ -39,7 +39,7 @@ public class TableReader {
         return levels;
     }
 
-    private List<SST> readSSTs(File data) {
+    private static List<SST> readSSTs(File data) {
         List<Integer> tableIds = findAllTableIds(data);
         List<SST> ssts = new ArrayList<>();
         for (int id : tableIds) {
@@ -52,7 +52,7 @@ public class TableReader {
         return ssts;
     }
 
-    private List<Integer> findAllTableIds(File data) {
+    private static List<Integer> findAllTableIds(File data) {
         return Arrays.stream(data.listFiles())
                 .map(File::getName)
                 .filter(FileNameUtil::isSstableFileName)

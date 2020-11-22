@@ -59,7 +59,7 @@ public class TableConverter {
         return new Table(indexBuffer, sstBuffer, tableId);
     }
 
-    public static SST convertMemtableToSST(Memtable memtable, int tableId, Path storagePath) {
+    public static SST convertMemtableToSST(Memtable memtable, int tableId, int level, Path storagePath) {
         NavigableMap<ByteBuffer, KeyInfo> indexKeys = new TreeMap<>();
 
         int valueOffset = 0;
@@ -71,7 +71,7 @@ public class TableConverter {
             valueOffset += value.capacity();
         }
 
-        Index index = new Index(0, indexKeys);
+        Index index = new Index(level, indexKeys);
         Path fileName = FileNameUtil.buildSstableFileName(storagePath, tableId);
         return new SST(index, tableId, fileName);
     }

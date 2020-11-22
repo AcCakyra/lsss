@@ -1,15 +1,13 @@
 package com.accakyra.lsss.lsm.data.persistent.level;
 
 import com.accakyra.lsss.Record;
-import com.accakyra.lsss.lsm.data.Resource;
-import com.accakyra.lsss.lsm.data.Run;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
 
 import java.nio.ByteBuffer;
 import java.util.*;
 
-public class Level0 implements Run, Resource {
+public class Level0 implements Level {
 
     private final Set<SST> sstables;
 

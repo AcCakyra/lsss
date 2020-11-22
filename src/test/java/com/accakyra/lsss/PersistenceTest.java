@@ -7,7 +7,6 @@ import org.junit.jupiter.api.Test;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.util.*;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -110,7 +109,7 @@ class PersistenceTest extends TestBase {
 
     @Test
     void hugeKeys() throws IOException {
-        int size = Config.MEMTABLE_THRESHOLD;
+        int size = 1024 * 1024;
         ByteBuffer payload = randomBuffer(size);
         ByteBuffer value = randomValue();
         int records = 128;
@@ -135,7 +134,7 @@ class PersistenceTest extends TestBase {
 
     @Test
     void hugeValues() throws IOException {
-        int size = Config.MEMTABLE_THRESHOLD;
+        int size = 1024 * 1024;
         ByteBuffer suffix = randomBuffer(size);
         int records = 128;
         Collection<ByteBuffer> keys = new ArrayList<>(records);
