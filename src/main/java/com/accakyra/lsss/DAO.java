@@ -2,9 +2,8 @@ package com.accakyra.lsss;
 
 import java.io.Closeable;
 import java.nio.ByteBuffer;
-import java.util.Iterator;
 
-public interface DAO extends Iterable<Record>, Closeable {
+public interface DAO extends Closeable {
 
     void upsert(ByteBuffer key, ByteBuffer value);
 
@@ -12,7 +11,9 @@ public interface DAO extends Iterable<Record>, Closeable {
 
     void delete(ByteBuffer key);
 
-    Iterator<Record> iterator(ByteBuffer from);
+    CloseableIterator<Record> iterator();
 
-    Iterator<Record> iterator(ByteBuffer from, ByteBuffer to);
+    CloseableIterator<Record> iterator(ByteBuffer from);
+
+    CloseableIterator<Record> iterator(ByteBuffer from, ByteBuffer to);
 }

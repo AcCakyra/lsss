@@ -57,15 +57,6 @@ abstract class TestBase {
                 .forEach(File::delete);
     }
 
-    int calcIteratorSize(Iterator<?> iterator) {
-        int count = 0;
-        while (iterator.hasNext()) {
-            iterator.next();
-            count++;
-        }
-        return count;
-    }
-
     ByteBuffer stringToByteBuffer(String data) {
         return ByteBuffer.wrap(data.getBytes());
     }

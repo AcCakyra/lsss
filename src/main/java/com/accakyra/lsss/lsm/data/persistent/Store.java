@@ -28,6 +28,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
@@ -46,13 +47,13 @@ public class Store implements Closeable {
         @Override
         public void run() {
             TableWriter.writeTable(table, storage);
-            lock.writeLock().lock();
+            levelsLock.writeLock().lock();
             levels.addSST(0, sst);
             levels.deleteImmtable(table.getId());
             if (levels.levelOverflow(0) > 0) {
                 compact();
             }
-            lock.writeLock().unlock();
+            levelsLock.writeLock().unlock();
             semaphore.release();
         }
     }
@@ -172,35 +173,45 @@ public class Store implements Closeable {
                 SST s = TableConverter.convertMemtableToSST(mem, id, level + 1, storage);
                 nextLevel.add(s);
             }
-            for (SST sstToRemove : sstablesToRemove) {
-                int id = sstToRemove.getId();
-                FileRemover.remove(FileNameUtil.buildIndexFileName(storage, id));
-                FileRemover.remove(FileNameUtil.buildSstableFileName(storage, id));
-            }
+
+            fileRemover.submit(() -> {
+                fileLock.writeLock().lock();
+                for (SST sstToRemove : sstablesToRemove) {
+                    int id = sstToRemove.getId();
+                    FileRemover.remove(FileNameUtil.buildIndexFileName(storage, id));
+                    FileRemover.remove(FileNameUtil.buildSstableFileName(storage, id));
+                }
+                fileLock.writeLock().unlock();
+            });
+
             level++;
         }
     }
 
     private final Levels levels;
     private final ExecutorService writer;
+    private final ExecutorService fileRemover;
     private final Semaphore semaphore;
-    private final ReentrantReadWriteLock lock;
+    private final ReadWriteLock fileLock;
+    private final ReadWriteLock levelsLock;
     private final Path storage;
     private final Metadata metadata;
 
-    public Store(File data) {
+    public Store(File data, ReadWriteLock fileLock) {
         this.levels = new Levels(data);
         this.writer = Executors.newSingleThreadExecutor();
+        this.fileRemover = Executors.newSingleThreadExecutor();
         this.metadata = new Metadata(data);
         this.semaphore = new Semaphore(Config.MAX_MEMTABLE_COUNT);
-        this.lock = new ReentrantReadWriteLock();
+        this.fileLock = fileLock;
+        this.levelsLock = new ReentrantReadWriteLock();
         this.storage = data.toPath();
     }
 
     public List<Resource> getResources() {
-        lock.readLock().lock();
+        levelsLock.readLock().lock();
         List<Resource> resources = levels.getResources();
-        lock.readLock().unlock();
+        levelsLock.readLock().unlock();
         return resources;
     }
 
@@ -211,9 +222,9 @@ public class Store implements Closeable {
             e.printStackTrace();
         }
         int tableId = metadata.getAndIncrementTableId();
-        lock.writeLock().lock();
+        levelsLock.writeLock().lock();
         levels.addImmtable(tableId, memtable);
-        lock.writeLock().unlock();
+        levelsLock.writeLock().unlock();
 
         Table table = TableConverter.convertMemtableToTable(memtable, tableId);
         SST sst = TableConverter.convertMemtableToSST(memtable, tableId, 0, storage);
