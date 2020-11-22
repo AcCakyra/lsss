@@ -12,6 +12,7 @@ import com.accakyra.lsss.lsm.data.persistent.level.Levels;
 import com.accakyra.lsss.lsm.data.persistent.sst.Index;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 import com.accakyra.lsss.lsm.io.FileRemover;
+import com.accakyra.lsss.lsm.util.FileNameUtil;
 import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
 import com.google.common.collect.Iterators;
 
@@ -172,7 +173,9 @@ public class Store implements Closeable {
                 nextLevel.add(s);
             }
             for (SST sstToRemove : sstablesToRemove) {
-                FileRemover.remove(sstToRemove.getName());
+                int id = sstToRemove.getId();
+                FileRemover.remove(FileNameUtil.buildIndexFileName(storage, id));
+                FileRemover.remove(FileNameUtil.buildSstableFileName(storage, id));
             }
             level++;
         }
