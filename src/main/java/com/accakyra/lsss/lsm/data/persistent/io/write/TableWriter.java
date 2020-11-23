@@ -9,7 +9,7 @@ import java.nio.file.Path;
 public class TableWriter {
 
     public static void writeTable(Table table, Path storagePath) {
-        Path sstableFileName = FileNameUtil.buildSstableFileName(storagePath, table.getId());
+        Path sstableFileName = FileNameUtil.buildSSTableFileName(storagePath, table.getId());
         Path indexFileName = FileNameUtil.buildIndexFileName(storagePath, table.getId());
         FileWriter.write(indexFileName, table.getIndexBuffer());
         FileWriter.write(sstableFileName, table.getSstBuffer());

@@ -4,9 +4,9 @@ import java.nio.ByteBuffer;
 
 public class Table {
 
-    private ByteBuffer indexBuffer;
-    private ByteBuffer sstBuffer;
-    private int id;
+    private final ByteBuffer indexBuffer;
+    private final ByteBuffer sstBuffer;
+    private final int id;
 
     public Table(ByteBuffer indexBuffer, ByteBuffer sstBuffer, int id) {
         this.indexBuffer = indexBuffer;

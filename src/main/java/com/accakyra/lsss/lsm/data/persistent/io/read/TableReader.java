@@ -44,7 +44,7 @@ public class TableReader {
         List<SST> ssts = new ArrayList<>();
         for (int id : tableIds) {
             Path indexFileName = FileNameUtil.buildIndexFileName(data.toPath(), id);
-            Path sstFileName = FileNameUtil.buildSstableFileName(data.toPath(), id);
+            Path sstFileName = FileNameUtil.buildSSTableFileName(data.toPath(), id);
             Index index = TableConverter.parseIndexBuffer(FileReader.read(indexFileName));
             SST sst = new SST(index, id, sstFileName);
             ssts.add(sst);
@@ -55,9 +55,9 @@ public class TableReader {
     private static List<Integer> findAllTableIds(File data) {
         return Arrays.stream(data.listFiles())
                 .map(File::getName)
-                .filter(FileNameUtil::isSstableFileName)
+                .filter(FileNameUtil::isIndexFileName)
                 .map(name -> name.replaceAll("[^0-9]", ""))
-                .mapToInt(FileNameUtil::extractIdFormSstFileName)
+                .mapToInt(FileNameUtil::extractIdFormIndexFileName)
                 .boxed()
                 .collect(Collectors.toList());
     }

@@ -27,8 +27,8 @@ public class TableConverter {
         int indexSize = 4 + memtable.getKeysCapacity() + keysInfoSize;
         int memtableSize = memtable.getTotalBytesCapacity();
 
-        ByteBuffer indexBuffer = ByteBuffer.allocate(indexSize);
-        ByteBuffer sstBuffer = ByteBuffer.allocate(memtableSize);
+        ByteBuffer indexBuffer = ByteBuffer.allocateDirect(indexSize);
+        ByteBuffer sstBuffer = ByteBuffer.allocateDirect(memtableSize);
 
         indexBuffer.putInt(0);
 
@@ -72,7 +72,7 @@ public class TableConverter {
         }
 
         Index index = new Index(level, indexKeys);
-        Path fileName = FileNameUtil.buildSstableFileName(storagePath, tableId);
+        Path fileName = FileNameUtil.buildSSTableFileName(storagePath, tableId);
         return new SST(index, tableId, fileName);
     }
 

@@ -179,7 +179,7 @@ public class Store implements Closeable {
                 for (SST sstToRemove : sstablesToRemove) {
                     int id = sstToRemove.getId();
                     FileRemover.remove(FileNameUtil.buildIndexFileName(storage, id));
-                    FileRemover.remove(FileNameUtil.buildSstableFileName(storage, id));
+                    FileRemover.remove(FileNameUtil.buildSSTableFileName(storage, id));
                 }
                 fileLock.writeLock().unlock();
             });
@@ -239,6 +239,8 @@ public class Store implements Closeable {
             }
             writer.shutdown();
             writer.awaitTermination(1, TimeUnit.HOURS);
+            fileRemover.shutdown();
+            fileRemover.awaitTermination(1, TimeUnit.HOURS);
             metadata.close();
         } catch (InterruptedException e) {
             e.printStackTrace();

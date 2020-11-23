@@ -66,7 +66,6 @@ class PersistenceTest extends TestBase {
         }
     }
 
-
     @Test
     void deleteMany() throws IOException {
         int tombstonesCount = 100000;

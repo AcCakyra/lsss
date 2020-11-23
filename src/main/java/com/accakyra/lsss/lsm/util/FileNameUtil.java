@@ -5,9 +5,9 @@ import java.util.regex.Pattern;
 
 public class FileNameUtil {
 
-    private static Pattern sstPattern = Pattern.compile("sstable\\d+.sst");
+    private static Pattern indexPattern = Pattern.compile("index\\d+.idx");
 
-    public static Path buildSstableFileName(Path folderName, int id) {
+    public static Path buildSSTableFileName(Path folderName, int id) {
         return Path.of(folderName + "/" + "sstable" + id + ".sst");
     }
 
@@ -15,11 +15,11 @@ public class FileNameUtil {
         return Path.of(folderName + "/" + "index" + id + ".idx");
     }
 
-    public static boolean isSstableFileName(String fileName) {
-        return sstPattern.asMatchPredicate().test(fileName);
+    public static boolean isIndexFileName(String fileName) {
+        return indexPattern.asMatchPredicate().test(fileName);
     }
 
-    public static int extractIdFormSstFileName(String fileName) {
+    public static int extractIdFormIndexFileName(String fileName) {
         return Integer.parseInt(fileName.replaceAll("[^0-9]", ""));
     }
 

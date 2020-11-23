@@ -11,7 +11,7 @@ public class FileReader {
 
     public static ByteBuffer read(Path fileName) {
         try (FileChannel channel = FileChannel.open(fileName, StandardOpenOption.READ)) {
-            return readFileChannel(channel, 0, channel.size());
+            return readFileChannel(channel, 0, (int) channel.size());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -27,9 +27,14 @@ public class FileReader {
         return null;
     }
 
-    private static ByteBuffer readFileChannel(FileChannel channel, int offset, long length) throws IOException {
-        MappedByteBuffer mapBuffer = channel.map(FileChannel.MapMode.READ_ONLY, offset, length);
-        mapBuffer.load();
-        return mapBuffer;
+    private static ByteBuffer readFileChannel(FileChannel channel, int offset, int length) throws IOException {
+        channel.position(offset);
+        ByteBuffer buffer = ByteBuffer.allocateDirect(length);
+        while (buffer.position() < buffer.limit()) {
+            int bytes = channel.read(buffer);
+            if (bytes <= 0) break;
+        }
+        buffer.flip();
+        return buffer;
     }
 }
