@@ -19,7 +19,7 @@ public class ConcurrentTest extends TestBase {
         int threadsCount = 10;
         ExecutorService clients = Executors.newFixedThreadPool(threadsCount);
 
-        int records = 20000;
+        int records = 10000;
         try (DAO dao = createDao()) {
             for (int i = 0; i < threadsCount; i++) {
                 clients.submit(() -> {

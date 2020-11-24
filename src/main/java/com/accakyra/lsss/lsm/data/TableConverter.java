@@ -15,7 +15,7 @@ import java.util.TreeMap;
 
 public class TableConverter {
 
-    public static Table convertMemtableToTable(Memtable memtable, int tableId) {
+    public static Table convertMemtableToTable(Memtable memtable) {
         // Overall size of index file is:
         // 4 bytes for level
         // + (4 bytes for storing length of key
@@ -34,7 +34,7 @@ public class TableConverter {
 
         int valueOffset = 0;
         for (Record record : memtable) {
-            ByteBuffer key = record.getKey();
+            ByteBuffer key = record.getKey().asReadOnlyBuffer();
             ByteBuffer value = record.getValue();
 
             sstBuffer.put(key);
@@ -56,7 +56,7 @@ public class TableConverter {
         sstBuffer.flip();
         indexBuffer.flip();
 
-        return new Table(indexBuffer, sstBuffer, tableId);
+        return new Table(indexBuffer, sstBuffer);
     }
 
     public static SST convertMemtableToSST(Memtable memtable, int tableId, int level, Path storagePath) {

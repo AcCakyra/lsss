@@ -36,26 +36,86 @@ public class Store implements Closeable {
 
     private class WriteSSTTask implements Runnable {
 
-        private final Table table;
+        private final Memtable immtable;
+        private final int tableId;
+
+        public WriteSSTTask(Memtable immtable, int tableId) {
+            this.immtable = immtable;
+            this.tableId = tableId;
+        }
+
+        @Override
+        public void run() {
+            Table table = TableConverter.convertMemtableToTable(immtable);
+            SST sst = TableConverter.convertMemtableToSST(immtable, tableId, 0, storage);
+            TableWriter.writeTable(table, tableId, storage);
+            compactor.execute(new CompactTask(sst));
+        }
+    }
+
+    private class CompactTask implements Runnable {
+
         private final SST sst;
 
-        public WriteSSTTask(Table table, SST sst) {
-            this.table = table;
+        public CompactTask(SST sst) {
             this.sst = sst;
         }
 
         @Override
         public void run() {
-            TableWriter.writeTable(table, storage);
             levelsLock.writeLock().lock();
             levels.addSST(0, sst);
-            levels.deleteImmtable(table.getId());
+            levels.deleteImmtable(sst.getId());
+            semaphore.release();
             if (levels.levelOverflow(0) > 0) {
                 compact();
             }
             levelsLock.writeLock().unlock();
-            semaphore.release();
         }
+    }
+
+    private final Levels levels;
+    private final ExecutorService writer;
+    private final ExecutorService compactor;
+    private final ExecutorService fileRemover;
+    private final Semaphore semaphore;
+    private final ReadWriteLock fileLock;
+    private final ReadWriteLock levelsLock;
+    private final Path storage;
+    private final Metadata metadata;
+
+    public Store(File data, ReadWriteLock fileLock) {
+        this.levels = new Levels(data);
+        this.writer = Executors.newFixedThreadPool(2);
+        this.compactor = Executors.newSingleThreadExecutor();
+        this.fileRemover = Executors.newSingleThreadExecutor();
+        this.metadata = new Metadata(data);
+        this.semaphore = new Semaphore(Config.MAX_MEMTABLE_COUNT);
+        this.fileLock = fileLock;
+        this.levelsLock = new ReentrantReadWriteLock();
+        this.storage = data.toPath();
+    }
+
+    public List<Resource> getResources() {
+        levelsLock.readLock().lock();
+        List<Resource> resources = levels.getResources();
+        levelsLock.readLock().unlock();
+        return resources;
+    }
+
+    public void addMemtable(Memtable memtable) {
+        try {
+            semaphore.acquire();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+        int tableId = metadata.getAndIncrementTableId();
+        levelsLock.writeLock().lock();
+        levels.addImmtable(tableId, memtable);
+        levelsLock.writeLock().unlock();
+
+        writer.submit(new WriteSSTTask(memtable, tableId));
     }
 
     private void compact() {
@@ -167,68 +227,23 @@ public class Store implements Closeable {
             if (!toFlush.isEmpty()) memtables.add(toFlush);
 
             for (Memtable mem : memtables) {
-                int id = metadata.getAndIncrementTableId();
-                Table tableToFlush = TableConverter.convertMemtableToTable(mem, id);
-                TableWriter.writeTable(tableToFlush, storage);
-                SST s = TableConverter.convertMemtableToSST(mem, id, level + 1, storage);
+                int tableId = metadata.getAndIncrementTableId();
+                Table tableToFlush = TableConverter.convertMemtableToTable(mem);
+                TableWriter.writeTable(tableToFlush, tableId, storage);
+                SST s = TableConverter.convertMemtableToSST(mem, tableId, level + 1, storage);
                 nextLevel.add(s);
             }
 
-            fileRemover.submit(() -> {
-                fileLock.writeLock().lock();
-                for (SST sstToRemove : sstablesToRemove) {
-                    int id = sstToRemove.getId();
-                    FileRemover.remove(FileNameUtil.buildIndexFileName(storage, id));
-                    FileRemover.remove(FileNameUtil.buildSSTableFileName(storage, id));
-                }
-                fileLock.writeLock().unlock();
-            });
+            fileLock.writeLock().lock();
+            for (SST sst : sstablesToRemove) {
+                int id = sst.getId();
+                FileRemover.remove(FileNameUtil.buildIndexFileName(storage, id));
+                FileRemover.remove(FileNameUtil.buildSSTableFileName(storage, id));
+            }
+            fileLock.writeLock().unlock();
 
             level++;
         }
-    }
-
-    private final Levels levels;
-    private final ExecutorService writer;
-    private final ExecutorService fileRemover;
-    private final Semaphore semaphore;
-    private final ReadWriteLock fileLock;
-    private final ReadWriteLock levelsLock;
-    private final Path storage;
-    private final Metadata metadata;
-
-    public Store(File data, ReadWriteLock fileLock) {
-        this.levels = new Levels(data);
-        this.writer = Executors.newSingleThreadExecutor();
-        this.fileRemover = Executors.newSingleThreadExecutor();
-        this.metadata = new Metadata(data);
-        this.semaphore = new Semaphore(Config.MAX_MEMTABLE_COUNT);
-        this.fileLock = fileLock;
-        this.levelsLock = new ReentrantReadWriteLock();
-        this.storage = data.toPath();
-    }
-
-    public List<Resource> getResources() {
-        levelsLock.readLock().lock();
-        List<Resource> resources = levels.getResources();
-        levelsLock.readLock().unlock();
-        return resources;
-    }
-
-    public void addMemtable(Memtable memtable) {
-        try {
-            semaphore.acquire();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        int tableId = metadata.getAndIncrementTableId();
-        levelsLock.writeLock().lock();
-        levels.addImmtable(tableId, memtable);
-        levelsLock.writeLock().unlock();
-
-        Table table = TableConverter.convertMemtableToTable(memtable, tableId);
-        SST sst = TableConverter.convertMemtableToSST(memtable, tableId, 0, storage);
-        writer.submit(new WriteSSTTask(table, sst));
     }
 
     @Override
@@ -237,10 +252,15 @@ public class Store implements Closeable {
             for (int i = 0; i < Config.MAX_MEMTABLE_COUNT; i++) {
                 semaphore.acquire();
             }
-            writer.shutdown();
-            writer.awaitTermination(1, TimeUnit.HOURS);
+
             fileRemover.shutdown();
+            compactor.shutdown();
+            writer.shutdown();
+
             fileRemover.awaitTermination(1, TimeUnit.HOURS);
+            compactor.awaitTermination(1, TimeUnit.HOURS);
+            writer.awaitTermination(1, TimeUnit.HOURS);
+
             metadata.close();
         } catch (InterruptedException e) {
             e.printStackTrace();

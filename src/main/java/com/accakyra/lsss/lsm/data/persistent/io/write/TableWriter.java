@@ -8,9 +8,9 @@ import java.nio.file.Path;
 
 public class TableWriter {
 
-    public static void writeTable(Table table, Path storagePath) {
-        Path sstableFileName = FileNameUtil.buildSSTableFileName(storagePath, table.getId());
-        Path indexFileName = FileNameUtil.buildIndexFileName(storagePath, table.getId());
+    public static void writeTable(Table table, int tableId, Path storagePath) {
+        Path sstableFileName = FileNameUtil.buildSSTableFileName(storagePath, tableId);
+        Path indexFileName = FileNameUtil.buildIndexFileName(storagePath, tableId);
         FileWriter.write(indexFileName, table.getIndexBuffer());
         FileWriter.write(sstableFileName, table.getSstBuffer());
     }
