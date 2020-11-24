@@ -2,29 +2,29 @@ package com.accakyra.lsss.lsm.data.memory;
 
 import java.nio.ByteBuffer;
 
-public class SnapshotKey implements Comparable<SnapshotKey> {
+public class VersionedKey implements Comparable<VersionedKey> {
 
     private final ByteBuffer key;
-    private final int snapshot;
+    private final int version;
 
-    public SnapshotKey(ByteBuffer key, int snapshot) {
+    public VersionedKey(ByteBuffer key, int version) {
         this.key = key;
-        this.snapshot = snapshot;
+        this.version = version;
     }
 
     public ByteBuffer getKey() {
         return key;
     }
 
-    public int getSnapshot() {
-        return snapshot;
+    public int getVersion() {
+        return version;
     }
 
     @Override
-    public int compareTo(SnapshotKey o) {
+    public int compareTo(VersionedKey o) {
         int compare = key.compareTo(o.getKey());
         if (compare == 0) {
-            return o.getSnapshot() - snapshot;
+            return o.getVersion() - version;
         } else {
             return compare;
         }

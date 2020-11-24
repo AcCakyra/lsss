@@ -1,11 +1,12 @@
 package com.accakyra.lsss.lsm.util.iterators;
 
-import com.accakyra.lsss.Record;
 import com.accakyra.lsss.CloseableIterator;
+import com.accakyra.lsss.Record;
 import com.google.common.collect.Iterators;
 
 import java.util.Iterator;
 import java.util.List;
+import java.util.NavigableSet;
 
 public class IteratorsUtil {
 
@@ -23,5 +24,9 @@ public class IteratorsUtil {
 
     public static Iterator<Record> removeTombstonesIterator(Iterator<Record> iterator) {
         return Iterators.filter(iterator, (record) -> !record.getValue().equals(Record.TOMBSTONE));
+    }
+
+    public static <T extends Comparable<T>> NavigableIterator<T> navigableIterator(NavigableSet<T> resource, T from, T to) {
+        return new NavigableIterator<>(resource, from, to);
     }
 }

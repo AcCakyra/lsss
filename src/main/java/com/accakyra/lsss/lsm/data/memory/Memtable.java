@@ -3,13 +3,15 @@ package com.accakyra.lsss.lsm.data.memory;
 import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.Config;
 import com.accakyra.lsss.lsm.data.Resource;
+import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
+import com.google.common.collect.Iterators;
 
 import java.nio.ByteBuffer;
 import java.util.*;
 
 public class Memtable implements Resource {
 
-    private final NavigableMap<SnapshotKey, ByteBuffer> memtable;
+    private final NavigableMap<VersionedKey, ByteBuffer> memtable;
     private int snapshot;
     private int keysCapacity;
     private int valuesCapacity;
@@ -25,8 +27,8 @@ public class Memtable implements Resource {
 
     @Override
     public Record get(ByteBuffer key) {
-        SnapshotKey keyToFind = new SnapshotKey(key, snapshot);
-        SnapshotKey recentKey = memtable.ceilingKey(keyToFind);
+        VersionedKey keyToFind = new VersionedKey(key, snapshot);
+        VersionedKey recentKey = memtable.ceilingKey(keyToFind);
         if (recentKey != null && recentKey.getKey().equals(key)) {
             ByteBuffer value = memtable.get(recentKey);
             return new Record(key, value);
@@ -40,8 +42,8 @@ public class Memtable implements Resource {
             keysCapacity += key.limit();
         }
         valuesCapacity += value.limit();
-        SnapshotKey snapshotKey = new SnapshotKey(key, snapshot++);
-        memtable.put(snapshotKey, value);
+        VersionedKey versionedKey = new VersionedKey(key, snapshot++);
+        memtable.put(versionedKey, value);
     }
 
     public int getTotalBytesCapacity() {
@@ -65,72 +67,25 @@ public class Memtable implements Resource {
         if (memtable.isEmpty()) {
             return Collections.emptyIterator();
         }
-        SnapshotKey fromKey = new SnapshotKey(memtable.firstKey().getKey(), snapshot);
-        return new MemtableIterator(fromKey);
+        return iterator(memtable.firstKey().getKey());
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from) {
-        SnapshotKey fromKey = new SnapshotKey(from, snapshot);
-        return new MemtableIterator(fromKey);
+        return iterator(from, null);
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from, ByteBuffer to) {
-        SnapshotKey fromKey = new SnapshotKey(from, snapshot);
-        SnapshotKey toKey = new SnapshotKey(to, snapshot);
-        return new MemtableIterator(fromKey, toKey);
-    }
+        VersionedKey fromKey = new VersionedKey(from, snapshot);
+        VersionedKey toKey = null;
+        if (to != null) toKey = new VersionedKey(to, snapshot);
 
-    private class MemtableIterator implements Iterator<Record> {
+        Iterator<VersionedKey> versionedKeyIterator = IteratorsUtil.navigableIterator(memtable.navigableKeySet(), fromKey, toKey);
+        Iterator<Record> recordIterator = Iterators.transform(
+                versionedKeyIterator,
+                (versionedKey) -> new Record(versionedKey.getKey(), memtable.get(versionedKey)));
 
-        private SnapshotKey current;
-        private SnapshotKey to;
-        private final int snapshot;
-
-        public MemtableIterator(SnapshotKey from) {
-            this.current = from;
-            this.snapshot = from.getSnapshot();
-            current = memtable.ceilingKey(from);
-        }
-
-        public MemtableIterator(SnapshotKey from, SnapshotKey to) {
-            this.current = from;
-            this.to = to;
-            this.snapshot = from.getSnapshot();
-            current = memtable.ceilingKey(from);
-        }
-
-        @Override
-        public boolean hasNext() {
-            if (current == null) return false;
-            else if (to != null) {
-                return current.getKey().compareTo(to.getKey()) < 0;
-            } else return true;
-        }
-
-        @Override
-        public Record next() {
-            SnapshotKey nextKey = nextKey();
-            return new Record(nextKey.getKey(), memtable.get(nextKey));
-        }
-
-        private SnapshotKey nextKey() {
-            SnapshotKey key = current;
-            while (true) {
-                SnapshotKey next = memtable.higherKey(current);
-                if (next == null) {
-                    current = null;
-                    break;
-                } else {
-                    if (next.getKey().compareTo(current.getKey()) > 0 && next.getSnapshot() < snapshot) {
-                        current = next;
-                        break;
-                    }
-                    current = next;
-                }
-            }
-            return key;
-        }
+        return IteratorsUtil.distinctIterator(recordIterator);
     }
 }
