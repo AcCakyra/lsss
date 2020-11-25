@@ -4,12 +4,13 @@ import com.accakyra.lsss.lsm.data.persistent.level.Level;
 import com.accakyra.lsss.lsm.data.TableConverter;
 import com.accakyra.lsss.lsm.data.persistent.level.Level0;
 import com.accakyra.lsss.lsm.data.persistent.level.LevelN;
-import com.accakyra.lsss.lsm.data.persistent.sst.Index;
+import com.accakyra.lsss.lsm.data.persistent.sst.KeyInfo;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 import com.accakyra.lsss.lsm.io.FileReader;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -45,8 +46,10 @@ public class TableReader {
         for (int id : tableIds) {
             Path indexFileName = FileNameUtil.buildIndexFileName(data.toPath(), id);
             Path sstFileName = FileNameUtil.buildSSTableFileName(data.toPath(), id);
-            Index index = TableConverter.parseIndexBuffer(FileReader.read(indexFileName));
-            SST sst = new SST(index, id, sstFileName);
+            ByteBuffer indexBuffer = FileReader.read(indexFileName);
+            int level = indexBuffer.getInt();
+            NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(indexBuffer);
+            SST sst = new SST(index, id, sstFileName, level);
             ssts.add(sst);
         }
         return ssts;

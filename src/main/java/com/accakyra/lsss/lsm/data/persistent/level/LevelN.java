@@ -17,7 +17,7 @@ public class LevelN implements Level {
 
     @Override
     public void add(SST sst) {
-        sstables.put(sst.getIndex().firstKey(), sst);
+        sstables.put(sst.firstKey(), sst);
     }
 
     @Override

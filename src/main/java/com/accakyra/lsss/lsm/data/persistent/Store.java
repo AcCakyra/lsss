@@ -9,7 +9,6 @@ import com.accakyra.lsss.lsm.data.persistent.io.Table;
 import com.accakyra.lsss.lsm.data.persistent.io.write.TableWriter;
 import com.accakyra.lsss.lsm.data.persistent.level.Level;
 import com.accakyra.lsss.lsm.data.persistent.level.Levels;
-import com.accakyra.lsss.lsm.data.persistent.sst.Index;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 import com.accakyra.lsss.lsm.io.FileRemover;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
@@ -131,15 +130,13 @@ public class Store implements Closeable {
             if (level == 0) {
                 from = currentLevel.getSstables()
                         .stream()
-                        .map(SST::getIndex)
-                        .map(Index::firstKey)
+                        .map(SST::firstKey)
                         .min(ByteBuffer::compareTo)
                         .get();
 
                 to = currentLevel.getSstables()
                         .stream()
-                        .map(SST::getIndex)
-                        .map(Index::lastKey)
+                        .map(SST::lastKey)
                         .max(ByteBuffer::compareTo)
                         .get();
 
@@ -160,14 +157,14 @@ public class Store implements Closeable {
                     int random = new Random().nextInt(currentLevel.size());
                     SST sstToRemove = currentLevel.getSstables().stream().skip(random).findFirst().get();
                     if (from == null) {
-                        from = sstToRemove.getIndex().firstKey();
-                        to = sstToRemove.getIndex().lastKey();
+                        from = sstToRemove.firstKey();
+                        to = sstToRemove.lastKey();
                     } else {
-                        if (from.compareTo(sstToRemove.getIndex().firstKey()) > 0) {
-                            from = sstToRemove.getIndex().firstKey();
+                        if (from.compareTo(sstToRemove.firstKey()) > 0) {
+                            from = sstToRemove.firstKey();
                         }
-                        if (to.compareTo(sstToRemove.getIndex().lastKey()) < 0) {
-                            to = sstToRemove.getIndex().lastKey();
+                        if (to.compareTo(sstToRemove.lastKey()) < 0) {
+                            to = sstToRemove.lastKey();
                         }
                     }
                     sstablesToRemove.add(sstToRemove);
@@ -191,8 +188,8 @@ public class Store implements Closeable {
 
             while (sstIterator.hasNext()) {
                 SST s = sstIterator.next();
-                ByteBuffer first = s.getIndex().keys().first();
-                ByteBuffer last = s.getIndex().keys().last();
+                ByteBuffer first = s.firstKey();
+                ByteBuffer last = s.lastKey();
                 if (last.compareTo(from) >= 0 && first.compareTo(to) <= 0) {
                     nextLevelSstables.add(s);
                     sstablesToRemove.add(s);

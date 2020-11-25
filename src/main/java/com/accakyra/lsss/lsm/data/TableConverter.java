@@ -2,7 +2,6 @@ package com.accakyra.lsss.lsm.data;
 
 import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
-import com.accakyra.lsss.lsm.data.persistent.sst.Index;
 import com.accakyra.lsss.lsm.data.persistent.sst.KeyInfo;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 import com.accakyra.lsss.lsm.data.persistent.io.Table;
@@ -34,9 +33,9 @@ public class TableConverter {
 
         indexBuffer.putInt(0);
 
-        int valueOffset = 0;
-
         Iterator<Record> memtableIterator = IteratorsUtil.distinctIterator(memtable.iterator());
+
+        int valueOffset = 0;
         while (memtableIterator.hasNext()) {
             Record record = memtableIterator.next();
             ByteBuffer key = record.getKey().asReadOnlyBuffer();
@@ -63,7 +62,7 @@ public class TableConverter {
     }
 
     public static SST convertMemtableToSST(Memtable memtable, int tableId, int level, Path storagePath) {
-        NavigableMap<ByteBuffer, KeyInfo> indexKeys = new TreeMap<>();
+        NavigableMap<ByteBuffer, KeyInfo> index = new TreeMap<>();
 
         int valueOffset = 0;
         Iterator<Record> memtableIterator = IteratorsUtil.distinctIterator(memtable.iterator());
@@ -72,18 +71,16 @@ public class TableConverter {
             ByteBuffer key = record.getKey().asReadOnlyBuffer();
             ByteBuffer value = record.getValue().asReadOnlyBuffer();
             valueOffset += key.capacity();
-            indexKeys.put(key, new KeyInfo(valueOffset, value.capacity()));
+            index.put(key, new KeyInfo(valueOffset, value.capacity()));
             valueOffset += value.capacity();
         }
 
-        Index index = new Index(level, indexKeys);
         Path fileName = FileNameUtil.buildSSTableFileName(storagePath, tableId);
-        return new SST(index, tableId, fileName);
+        return new SST(index, tableId, fileName, level);
     }
 
-    public static Index parseIndexBuffer(ByteBuffer buffer) {
+    public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBuffer(ByteBuffer buffer) {
         NavigableMap<ByteBuffer, KeyInfo> keys = new TreeMap<>();
-        int level = buffer.getInt();
         while (buffer.hasRemaining()) {
             int keySize = buffer.getInt();
             byte[] key = new byte[keySize];
@@ -93,6 +90,6 @@ public class TableConverter {
             int valueSize = buffer.getInt();
             keys.put(keyBuffer, new KeyInfo(offset, valueSize));
         }
-        return new Index(level, keys);
+        return keys;
     }
 }
