@@ -18,7 +18,7 @@ public class NavigableIterator<T extends Comparable<T>> implements Iterator<T> {
     @Override
     public boolean hasNext() {
         if (current == null) return false;
-        if (to != null) return current.compareTo(to) <= 0;
+        if (to != null) return current.compareTo(to) < 0;
         return true;
     }
 

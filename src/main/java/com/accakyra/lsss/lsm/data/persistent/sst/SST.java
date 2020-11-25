@@ -33,10 +33,6 @@ public class SST implements Resource {
         return index;
     }
 
-    public Path getName() {
-        return fileName;
-    }
-
     @Override
     public Record get(ByteBuffer key) {
         KeyInfo keyInfo = index.getKeyInfo(key);

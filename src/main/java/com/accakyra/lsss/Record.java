@@ -26,6 +26,6 @@ public class Record implements Comparable<Record> {
 
     @Override
     public int compareTo(Record o) {
-        return this.key.compareTo(o.key);
+        return getKey().compareTo(o.getKey());
     }
 }

@@ -7,9 +7,11 @@ import com.accakyra.lsss.lsm.data.persistent.sst.KeyInfo;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 import com.accakyra.lsss.lsm.data.persistent.io.Table;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
+import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
 
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.util.Iterator;
 import java.util.NavigableMap;
 import java.util.TreeMap;
 
@@ -33,15 +35,18 @@ public class TableConverter {
         indexBuffer.putInt(0);
 
         int valueOffset = 0;
-        for (Record record : memtable) {
+
+        Iterator<Record> memtableIterator = IteratorsUtil.distinctIterator(memtable.iterator());
+        while (memtableIterator.hasNext()) {
+            Record record = memtableIterator.next();
             ByteBuffer key = record.getKey().asReadOnlyBuffer();
-            ByteBuffer value = record.getValue();
+            ByteBuffer value = record.getValue().asReadOnlyBuffer();
 
             sstBuffer.put(key);
             sstBuffer.put(value);
 
-            key.rewind();
-            value.rewind();
+            key.flip();
+            value.flip();
 
             valueOffset += key.capacity();
             indexBuffer.putInt(key.capacity());
@@ -49,8 +54,6 @@ public class TableConverter {
             indexBuffer.putInt(valueOffset);
             indexBuffer.putInt(value.capacity());
             valueOffset += value.capacity();
-
-            key.rewind();
         }
 
         sstBuffer.flip();
@@ -63,9 +66,11 @@ public class TableConverter {
         NavigableMap<ByteBuffer, KeyInfo> indexKeys = new TreeMap<>();
 
         int valueOffset = 0;
-        for (Record record : memtable) {
-            ByteBuffer key = record.getKey();
-            ByteBuffer value = record.getValue();
+        Iterator<Record> memtableIterator = IteratorsUtil.distinctIterator(memtable.iterator());
+        while (memtableIterator.hasNext()) {
+            Record record = memtableIterator.next();
+            ByteBuffer key = record.getKey().asReadOnlyBuffer();
+            ByteBuffer value = record.getValue().asReadOnlyBuffer();
             valueOffset += key.capacity();
             indexKeys.put(key, new KeyInfo(valueOffset, value.capacity()));
             valueOffset += value.capacity();

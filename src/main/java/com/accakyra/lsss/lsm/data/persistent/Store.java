@@ -215,16 +215,16 @@ public class Store implements Closeable {
                                     )));
 
             List<Memtable> memtables = new ArrayList<>();
-            Memtable toFlush = new Memtable();
+            Memtable memtable = new Memtable();
             while (iterator.hasNext()) {
                 Record record = iterator.next();
-                toFlush.upsert(record.getKey(), record.getValue());
-                if (!toFlush.hasSpace()) {
-                    memtables.add(toFlush);
-                    toFlush = new Memtable();
+                memtable.upsert(record.getKey(), record.getValue());
+                if (!memtable.hasSpace()) {
+                    memtables.add(memtable);
+                    memtable = new Memtable();
                 }
             }
-            if (!toFlush.isEmpty()) memtables.add(toFlush);
+            if (!memtable.isEmpty()) memtables.add(memtable);
 
             for (Memtable mem : memtables) {
                 int tableId = metadata.getAndIncrementTableId();

@@ -21,17 +21,20 @@ public class Memtable implements Resource {
         this.memtable = new TreeMap<>();
     }
 
-    public boolean hasSpace() {
-        return getTotalBytesCapacity() <= Config.MEMTABLE_THRESHOLD;
-    }
-
     @Override
     public Record get(ByteBuffer key) {
         VersionedKey keyToFind = new VersionedKey(key, snapshot);
         VersionedKey recentKey = memtable.ceilingKey(keyToFind);
         if (recentKey != null && recentKey.getKey().equals(key)) {
-            ByteBuffer value = memtable.get(recentKey);
-            return new Record(key, value);
+            return get(recentKey);
+        }
+        return null;
+    }
+
+    public Record get(VersionedKey key) {
+        ByteBuffer value = memtable.get(key);
+        if (value != null) {
+            return new Record(key.getKey(), value);
         }
         return null;
     }
@@ -46,6 +49,14 @@ public class Memtable implements Resource {
         memtable.put(versionedKey, value);
     }
 
+    public boolean hasSpace() {
+        return getTotalBytesCapacity() <= Config.MEMTABLE_THRESHOLD;
+    }
+
+    public boolean isEmpty() {
+        return getUniqueKeysCount() == 0;
+    }
+
     public int getTotalBytesCapacity() {
         return keysCapacity + valuesCapacity;
     }
@@ -56,10 +67,6 @@ public class Memtable implements Resource {
 
     public int getUniqueKeysCount() {
         return uniqueKeysCount;
-    }
-
-    public boolean isEmpty() {
-        return getUniqueKeysCount() == 0;
     }
 
     @Override
@@ -82,10 +89,6 @@ public class Memtable implements Resource {
         if (to != null) toKey = new VersionedKey(to, snapshot);
 
         Iterator<VersionedKey> versionedKeyIterator = IteratorsUtil.navigableIterator(memtable.navigableKeySet(), fromKey, toKey);
-        Iterator<Record> recordIterator = Iterators.transform(
-                versionedKeyIterator,
-                (versionedKey) -> new Record(versionedKey.getKey(), memtable.get(versionedKey)));
-
-        return IteratorsUtil.distinctIterator(recordIterator);
+        return Iterators.transform(versionedKeyIterator, this::get);
     }
 }
