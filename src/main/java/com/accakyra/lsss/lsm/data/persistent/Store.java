@@ -9,12 +9,12 @@ import com.accakyra.lsss.lsm.data.persistent.io.Table;
 import com.accakyra.lsss.lsm.data.persistent.io.write.TableWriter;
 import com.accakyra.lsss.lsm.data.persistent.level.Level;
 import com.accakyra.lsss.lsm.data.persistent.level.Levels;
+import com.accakyra.lsss.lsm.data.persistent.sst.KeyInfo;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 import com.accakyra.lsss.lsm.io.FileRemover;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
 import com.google.common.collect.Iterators;
-import com.google.common.collect.Lists;
 
 import java.io.Closeable;
 import java.io.File;
@@ -43,9 +43,11 @@ public class Store implements Closeable {
 
         @Override
         public void run() {
-            Table table = TableConverter.convertMemtableToTable(immtable, 0);
-            SST sst = TableConverter.convertMemtableToSST(immtable, tableId, 0, storage);
+            int level = 0;
+            Table table = TableConverter.convertMemtableToTable(immtable, level);
             TableWriter.writeTable(table, tableId, storage);
+            NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(table.getIndexBuffer().position(4));
+            SST sst = new SST(index, tableId, FileNameUtil.buildSSTableFileName(storage, tableId), level);
             compactor.execute(new CompactTask(sst));
         }
     }
@@ -220,10 +222,11 @@ public class Store implements Closeable {
 
             for (Memtable mem : memtables) {
                 int tableId = metadata.getAndIncrementTableId();
-                Table tableToFlush = TableConverter.convertMemtableToTable(mem, level + 1);
-                TableWriter.writeTable(tableToFlush, tableId, storage);
-                SST s = TableConverter.convertMemtableToSST(mem, tableId, level + 1, storage);
-                nextLevel.add(s);
+                Table table = TableConverter.convertMemtableToTable(mem, level + 1);
+                TableWriter.writeTable(table, tableId, storage);
+                NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(table.getIndexBuffer().position(4));
+                SST sst = new SST(index, tableId, FileNameUtil.buildSSTableFileName(storage, tableId), level + 1);
+                nextLevel.add(sst);
             }
 
             // todo: move to another thread

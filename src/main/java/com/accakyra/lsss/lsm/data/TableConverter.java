@@ -61,24 +61,6 @@ public class TableConverter {
         return new Table(indexBuffer, sstBuffer);
     }
 
-    public static SST convertMemtableToSST(Memtable memtable, int tableId, int level, Path storagePath) {
-        NavigableMap<ByteBuffer, KeyInfo> index = new TreeMap<>();
-
-        int valueOffset = 0;
-        Iterator<Record> memtableIterator = IteratorsUtil.distinctIterator(memtable.iterator());
-        while (memtableIterator.hasNext()) {
-            Record record = memtableIterator.next();
-            ByteBuffer key = record.getKey().asReadOnlyBuffer();
-            ByteBuffer value = record.getValue().asReadOnlyBuffer();
-            valueOffset += key.capacity();
-            index.put(key, new KeyInfo(valueOffset, value.capacity()));
-            valueOffset += value.capacity();
-        }
-
-        Path fileName = FileNameUtil.buildSSTableFileName(storagePath, tableId);
-        return new SST(index, tableId, fileName, level);
-    }
-
     public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBuffer(ByteBuffer buffer) {
         NavigableMap<ByteBuffer, KeyInfo> keys = new TreeMap<>();
         while (buffer.hasRemaining()) {
