@@ -18,24 +18,31 @@ import java.util.stream.Collectors;
 public class TableReader {
 
     public static Map<Integer, Level> readLevels(File data) {
-        Map<Integer, List<SST>> sstMap = readSSTs(data)
-                .stream()
-                .collect(Collectors.groupingBy(SST::getLevel));
+        Map<Integer, List<SST>> sstableMap =
+                readSSTs(data).stream()
+                        .collect(Collectors.groupingBy(SST::getLevel));
 
         Map<Integer, Level> levels = new HashMap<>();
-        for (Map.Entry<Integer, List<SST>> storedRun : sstMap.entrySet()) {
-            int level = storedRun.getKey();
-            Level run;
-            if (level == 0) {
-                run = new Level0();
-            } else {
-                run = new LevelN();
-            }
-            for (SST sst : storedRun.getValue()) run.add(sst);
-            levels.put(level, run);
+        int maxLevelNumber = 0;
+        for (Map.Entry<Integer, List<SST>> sstables : sstableMap.entrySet()) {
+            int levelNumber = sstables.getKey();
+            maxLevelNumber = Math.max(maxLevelNumber, levelNumber);
+
+            Level level;
+            if (levelNumber == 0) level = new Level0();
+            else level = new LevelN();
+
+            for (SST sst : sstables.getValue()) level.add(sst);
+            levels.put(levelNumber, level);
         }
-        if (levels.isEmpty()) {
-            levels.put(0, new Level0());
+
+        for (int levelNumber = 0; levelNumber <= maxLevelNumber; levelNumber++) {
+            if (!levels.containsKey(levelNumber)) {
+                Level level;
+                if (levelNumber == 0) level = new Level0();
+                else level = new LevelN();
+                levels.put(levelNumber, level);
+            }
         }
         return levels;
     }

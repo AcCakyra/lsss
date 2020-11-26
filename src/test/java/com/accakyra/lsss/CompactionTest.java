@@ -79,8 +79,8 @@ class CompactionTest extends TestBase {
 
     @Test
     void clear() throws IOException {
-        int valueSize = 2 * 1024 * 1024;
-        int keyCount = 10;
+        int valueSize = 1024 * 1024;
+        int keyCount = 40;
 
         ByteBuffer value = randomBuffer(valueSize);
         List<ByteBuffer> keys = new ArrayList<>(keyCount);
@@ -104,14 +104,20 @@ class CompactionTest extends TestBase {
             }
         }
 
-        long size = directorySize();
-
         try (DAO dao = createDao()) {
             for (ByteBuffer key : keys) {
                 assertThrows(NoSuchElementException.class, () -> dao.get(key));
             }
         }
 
-        assertTrue(size < valueSize);
+        try (DAO dao = createDao()) {
+            for (ByteBuffer key : keys) {
+                dao.upsert(key, join(key, value));
+            }
+        }
+
+        long size = directorySize();
+
+        assertTrue(size < 2 * keyCount * valueSize);
     }
 }

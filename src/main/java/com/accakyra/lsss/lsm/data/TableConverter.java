@@ -16,7 +16,7 @@ import java.util.TreeMap;
 
 public class TableConverter {
 
-    public static Table convertMemtableToTable(Memtable memtable) {
+    public static Table convertMemtableToTable(Memtable memtable, int level) {
         // Overall size of index file is:
         // 4 bytes for level
         // + (4 bytes for storing length of key
@@ -31,7 +31,7 @@ public class TableConverter {
         ByteBuffer indexBuffer = ByteBuffer.allocateDirect(indexSize);
         ByteBuffer sstBuffer = ByteBuffer.allocateDirect(memtableSize);
 
-        indexBuffer.putInt(0);
+        indexBuffer.putInt(level);
 
         Iterator<Record> memtableIterator = IteratorsUtil.distinctIterator(memtable.iterator());
 

@@ -8,8 +8,9 @@ import java.util.*;
 public class MergedIterator<T extends Comparable<T>> implements Iterator<T> {
 
     private class IndexedIterator implements Comparable<IndexedIterator> {
-        PeekingIterator<T> iterator;
-        int index;
+
+        private final PeekingIterator<T> iterator;
+        private final int index;
 
         public IndexedIterator(PeekingIterator<T> iterator, int index) {
             this.iterator = iterator;
@@ -26,40 +27,32 @@ public class MergedIterator<T extends Comparable<T>> implements Iterator<T> {
     }
 
     private final Queue<IndexedIterator> heap;
-    private T current;
 
     public MergedIterator(List<Iterator<T>> iterators) {
         this.heap = new PriorityQueue<>();
         for (int i = 0; i < iterators.size(); i++) {
-            Iterator<? extends T> iterator = iterators.get(i);
-            if (iterator.hasNext()) {
-                heap.add(new IndexedIterator(Iterators.peekingIterator(iterator), i));
-            }
+            Iterator<T> iterator = iterators.get(i);
+            IndexedIterator indexedIterator = new IndexedIterator(Iterators.peekingIterator(iterator), i);
+            addIterator(indexedIterator);
         }
-        nextRecord();
     }
 
     @Override
     public boolean hasNext() {
-        return current != null;
+        return !heap.isEmpty();
     }
 
     @Override
     public T next() {
-        T record = current;
-        nextRecord();
+        IndexedIterator nextIterator = heap.poll();
+        T record = nextIterator.iterator.next();
+        addIterator(nextIterator);
         return record;
     }
 
-    private void nextRecord() {
-        if (!heap.isEmpty()) {
-            IndexedIterator nextIterator = heap.poll();
-            current = nextIterator.iterator.next();
-            if (nextIterator.iterator.hasNext()) {
-                heap.add(nextIterator);
-            }
-        } else {
-            current = null;
+    private void addIterator(IndexedIterator indexedIterator) {
+        if (indexedIterator.iterator.hasNext()) {
+            heap.add(indexedIterator);
         }
     }
 }

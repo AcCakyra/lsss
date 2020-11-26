@@ -227,8 +227,8 @@ class PersistenceTest extends TestBase {
 
     @Test
     void clear() throws IOException {
-        int valueSize = Config.MEMTABLE_THRESHOLD;
-        int keyCount = 10;
+        int valueSize = 2 * 1024 * 1024;
+        int keyCount = 80;
 
         ByteBuffer value = randomBuffer(valueSize);
         List<ByteBuffer> keys = new ArrayList<>(keyCount);

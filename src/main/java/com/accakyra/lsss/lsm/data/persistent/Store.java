@@ -14,15 +14,13 @@ import com.accakyra.lsss.lsm.io.FileRemover;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
 import com.google.common.collect.Iterators;
+import com.google.common.collect.Lists;
 
 import java.io.Closeable;
 import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Semaphore;
@@ -45,7 +43,7 @@ public class Store implements Closeable {
 
         @Override
         public void run() {
-            Table table = TableConverter.convertMemtableToTable(immtable);
+            Table table = TableConverter.convertMemtableToTable(immtable, 0);
             SST sst = TableConverter.convertMemtableToSST(immtable, tableId, 0, storage);
             TableWriter.writeTable(table, tableId, storage);
             compactor.execute(new CompactTask(sst));
@@ -172,16 +170,14 @@ public class Store implements Closeable {
                 }
 
                 currentLevelIterator =
-                        Iterators.concat(
+                        IteratorsUtil.mergeIterator(
                                 sstablesToRemove
                                         .stream()
                                         .map(SST::iterator)
-                                        .collect(Collectors.toList())
-                                        .iterator());
+                                        .collect(Collectors.toList()));
             }
 
             levels.addLevel(level + 1);
-
             Level nextLevel = levels.getLevel(level + 1);
             Iterator<SST> sstIterator = nextLevel.getSstables().iterator();
             List<SST> nextLevelSstables = new ArrayList<>();
@@ -205,14 +201,13 @@ public class Store implements Closeable {
                             .iterator());
 
             Iterator<Record> iterator =
-                    IteratorsUtil.removeTombstonesIterator(
-                            IteratorsUtil.distinctIterator(
-                                    IteratorsUtil.mergeIterator(
-                                            List.of(currentLevelIterator, nextLevelIterator)
-                                    )));
+                    IteratorsUtil.distinctIterator(
+                            IteratorsUtil.mergeIterator(
+                                    List.of(currentLevelIterator, nextLevelIterator)));
 
             List<Memtable> memtables = new ArrayList<>();
             Memtable memtable = new Memtable();
+
             while (iterator.hasNext()) {
                 Record record = iterator.next();
                 memtable.upsert(record.getKey(), record.getValue());
@@ -225,12 +220,14 @@ public class Store implements Closeable {
 
             for (Memtable mem : memtables) {
                 int tableId = metadata.getAndIncrementTableId();
-                Table tableToFlush = TableConverter.convertMemtableToTable(mem);
+                Table tableToFlush = TableConverter.convertMemtableToTable(mem, level + 1);
                 TableWriter.writeTable(tableToFlush, tableId, storage);
                 SST s = TableConverter.convertMemtableToSST(mem, tableId, level + 1, storage);
                 nextLevel.add(s);
             }
 
+            // todo: move to another thread
+            // coz we cannot complete compaction if someone has closable iterator
             fileLock.writeLock().lock();
             for (SST sst : sstablesToRemove) {
                 int id = sst.getId();
