@@ -1,18 +1,15 @@
 package com.accakyra.lsss.lsm.data.persistent.sst;
 
 import com.accakyra.lsss.Record;
+import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.data.TableConverter;
 import com.accakyra.lsss.lsm.io.FileReader;
-import com.accakyra.lsss.lsm.data.Resource;
-import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
-import com.google.common.collect.Comparators;
-import com.google.common.collect.Iterators;
-import org.checkerframework.checker.units.qual.K;
 
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.util.*;
-import java.util.stream.Collector;
+import java.util.Iterator;
+import java.util.Map;
+import java.util.NavigableMap;
 
 public class SST implements Resource {
 
@@ -22,8 +19,7 @@ public class SST implements Resource {
     private final int id;
     private final int level;
 
-    public SST(NavigableMap<ByteBuffer, KeyInfo> index, int id,
-               Path sstFileName, Path indexFileName, int level) {
+    public SST(NavigableMap<ByteBuffer, KeyInfo> index, int id, Path sstFileName, Path indexFileName, int level) {
         this.index = index;
         this.sstFileName = sstFileName;
         this.indexFileName = indexFileName;
@@ -67,28 +63,20 @@ public class SST implements Resource {
 
     @Override
     public Iterator<Record> iterator() {
-        return loadIndex(index.firstKey(), index.lastKey())
-                .entrySet()
-                .stream()
-                .map(entry -> get(entry.getKey(), entry.getValue()))
-                .iterator();
+        return rangeIterator(index.firstKey(), index.lastKey(), true);
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from) {
-        ByteBuffer fromKey = index.floorKey(from);
-        if (fromKey == null) fromKey = index.firstKey();
-
-        return loadIndex(fromKey, index.lastKey())
-                .entrySet()
-                .stream()
-                .map(entry -> get(entry.getKey(), entry.getValue()))
-                .filter(record -> record.getKey().compareTo(from) >= 0)
-                .iterator();
+        return rangeIterator(from, index.lastKey(), true);
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from, ByteBuffer to) {
+        return rangeIterator(from, to, false);
+    }
+
+    public Iterator<Record> rangeIterator(ByteBuffer from, ByteBuffer to, boolean toInclusive) {
         ByteBuffer fromKey = index.floorKey(from);
         if (fromKey == null) fromKey = index.firstKey();
 
@@ -100,7 +88,10 @@ public class SST implements Resource {
                 .stream()
                 .map(entry -> get(entry.getKey(), entry.getValue()))
                 .filter(record -> record.getKey().compareTo(from) >= 0)
-                .filter(record -> record.getKey().compareTo(to) < 0)
+                .filter(record -> {
+                    int compare = record.getKey().compareTo(to);
+                    return toInclusive ? compare <= 0 : compare < 0;
+                })
                 .iterator();
     }
 
