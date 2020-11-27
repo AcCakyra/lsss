@@ -7,6 +7,8 @@ import java.util.Collection;
 
 public interface Level extends Resource {
 
+    Level copy();
+
     void add(SST sst);
 
     Collection<SST> getSstables();

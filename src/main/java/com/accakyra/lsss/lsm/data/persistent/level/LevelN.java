@@ -15,6 +15,15 @@ public class LevelN implements Level {
         this.sstables = new TreeMap<>();
     }
 
+    public LevelN(NavigableMap<ByteBuffer, SST> sstables) {
+        this.sstables = sstables;
+    }
+
+    @Override
+    public Level copy() {
+        return new LevelN(new TreeMap<>(sstables));
+    }
+
     @Override
     public void add(SST sst) {
         sstables.put(sst.firstKey(), sst);

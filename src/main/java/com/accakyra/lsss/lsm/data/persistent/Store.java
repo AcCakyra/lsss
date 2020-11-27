@@ -216,22 +216,28 @@ public class Store implements Closeable {
                             IteratorsUtil.mergeIterator(
                                     List.of(currentLevelIterator, nextLevelIterator)));
 
-            List<Memtable> memtables = new ArrayList<>();
             Memtable memtable = new Memtable();
 
             while (iterator.hasNext()) {
                 Record record = iterator.next();
                 memtable.upsert(record.getKey(), record.getValue());
                 if (!memtable.hasSpace()) {
-                    memtables.add(memtable);
+                    int tableId = metadata.getAndIncrementTableId();
+                    Table table = TableConverter.convertMemtableToTable(memtable, level + 1);
+                    TableWriter.writeTable(table, tableId, storage);
+                    NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(table.getIndexBuffer().position(4), true);
+                    Path sstFileName = FileNameUtil.buildSSTableFileName(storage, tableId);
+                    Path indexFileName = FileNameUtil.buildIndexFileName(storage, tableId);
+                    SST sst = new SST(index, tableId, sstFileName, indexFileName, level + 1);
+                    nextLevel.add(sst);
+
                     memtable = new Memtable();
                 }
             }
-            if (!memtable.isEmpty()) memtables.add(memtable);
 
-            for (Memtable mem : memtables) {
+            if (!memtable.isEmpty()) {
                 int tableId = metadata.getAndIncrementTableId();
-                Table table = TableConverter.convertMemtableToTable(mem, level + 1);
+                Table table = TableConverter.convertMemtableToTable(memtable, level + 1);
                 TableWriter.writeTable(table, tableId, storage);
                 NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(table.getIndexBuffer().position(4), true);
                 Path sstFileName = FileNameUtil.buildSSTableFileName(storage, tableId);
@@ -239,6 +245,7 @@ public class Store implements Closeable {
                 SST sst = new SST(index, tableId, sstFileName, indexFileName, level + 1);
                 nextLevel.add(sst);
             }
+
 
             // todo: move to another thread
             // coz we cannot complete compaction if someone has closable iterator

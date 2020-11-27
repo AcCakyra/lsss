@@ -15,6 +15,17 @@ public class Level0 implements Level {
         this.sstables = new TreeSet<>(Comparator.comparingInt(SST::getId).reversed());
     }
 
+    public Level0(Set<SST> sstables) {
+        this.sstables = sstables;
+    }
+
+    @Override
+    public Level copy() {
+        TreeSet<SST> sstablesCopy = new TreeSet<>(Comparator.comparingInt(SST::getId).reversed());
+        sstablesCopy.addAll(sstables);
+        return new Level0(sstablesCopy);
+    }
+
     @Override
     public void add(SST sst) {
         sstables.add(sst);
@@ -45,20 +56,23 @@ public class Level0 implements Level {
     public Iterator<Record> iterator() {
         List<Iterator<Record>> iterators = new ArrayList<>();
         for (SST sst : sstables) iterators.add(sst.iterator());
-        return IteratorsUtil.mergeIterator(iterators);
+        return IteratorsUtil.distinctIterator(
+                IteratorsUtil.mergeIterator(iterators));
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from) {
         List<Iterator<Record>> iterators = new ArrayList<>();
         for (SST sst : sstables) iterators.add(sst.iterator(from));
-        return IteratorsUtil.mergeIterator(iterators);
+        return IteratorsUtil.distinctIterator(
+                IteratorsUtil.mergeIterator(iterators));
     }
 
     @Override
     public Iterator<Record> iterator(ByteBuffer from, ByteBuffer to) {
         List<Iterator<Record>> iterators = new ArrayList<>();
         for (SST sst : sstables) iterators.add(sst.iterator(from, to));
-        return IteratorsUtil.mergeIterator(iterators);
+        return IteratorsUtil.distinctIterator(
+                IteratorsUtil.mergeIterator(iterators));
     }
 }

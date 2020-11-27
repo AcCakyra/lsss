@@ -35,11 +35,10 @@ public class Levels {
     }
 
     public List<Resource> getResources() {
-        List<Resource> resources = new ArrayList<>();
-        resources.addAll(immtables.values());
+        List<Resource> resources = new ArrayList<>(immtables.values());
         resources.addAll(levels.values()
                 .stream()
-                .flatMap(level -> level.getSstables().stream())
+                .map(Level::copy)
                 .collect(Collectors.toList()));
         return resources;
     }
