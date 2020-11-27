@@ -199,7 +199,7 @@ class PersistenceTest extends TestBase {
 
     @RepeatedTest(10)
     void overwrite() throws IOException {
-        int valueSize = 1024 * 1024;
+        int valueSize = 2 * 1024 * 1024;
         int keyCount = 10;
         int overwrites = 10;
 

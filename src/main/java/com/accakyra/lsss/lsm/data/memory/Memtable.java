@@ -31,7 +31,7 @@ public class Memtable implements Resource {
         return null;
     }
 
-    public Record get(VersionedKey key) {
+    private Record get(VersionedKey key) {
         ByteBuffer value = memtable.get(key);
         if (value != null) {
             return new Record(key.getKey(), value);

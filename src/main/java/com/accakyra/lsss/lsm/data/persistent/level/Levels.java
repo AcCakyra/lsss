@@ -1,5 +1,6 @@
 package com.accakyra.lsss.lsm.data.persistent.level;
 
+import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.Config;
 import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
@@ -7,23 +8,40 @@ import com.accakyra.lsss.lsm.data.persistent.io.read.TableReader;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 
 import java.io.File;
+import java.nio.ByteBuffer;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Levels {
 
-    private final Map<Integer, Level> levels;
     private final Map<Integer, Memtable> immtables;
+    private final Map<Integer, Level> levels;
 
     public Levels(File data) {
-        this.levels = TableReader.readLevels(data);
         this.immtables = new TreeMap<>(Comparator.reverseOrder());
+        this.levels = TableReader.readLevels(data);
+    }
+
+    public Record get(ByteBuffer key) {
+        for (Resource immtable : immtables.values()) {
+            Record record = immtable.get(key);
+            if (record != null) return record;
+        }
+        for (Resource level : levels.values()) {
+            Record record = level.get(key);
+            if (record != null) return record;
+        }
+        return null;
     }
 
     public List<Resource> getResources() {
-        List<Resource> levelsList = new ArrayList<>();
-        levelsList.addAll(immtables.values());
-        levelsList.addAll(levels.values());
-        return levelsList;
+        List<Resource> resources = new ArrayList<>();
+        resources.addAll(immtables.values());
+        resources.addAll(levels.values()
+                .stream()
+                .flatMap(level -> level.getSstables().stream())
+                .collect(Collectors.toList()));
+        return resources;
     }
 
     public Level getLevel(int level) {

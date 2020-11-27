@@ -45,12 +45,7 @@ public class LSMTree implements DAO {
     public ByteBuffer get(ByteBuffer key) throws NoSuchElementException {
         lsmLock.readLock().lock();
         Record record = memtable.get(key);
-        if (record == null) {
-            for (Resource resource : store.getResources()) {
-                record = resource.get(key);
-                if (record != null) break;
-            }
-        }
+        if (record == null) record = store.get(key);
         lsmLock.readLock().unlock();
         return extractValue(record);
     }

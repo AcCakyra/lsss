@@ -97,6 +97,13 @@ public class Store implements Closeable {
         this.storage = data.toPath();
     }
 
+    public Record get(ByteBuffer key) {
+        levelsLock.readLock().lock();
+        Record record = levels.get(key);
+        levelsLock.readLock().unlock();
+        return record;
+    }
+
     public List<Resource> getResources() {
         levelsLock.readLock().lock();
         List<Resource> resources = levels.getResources();
