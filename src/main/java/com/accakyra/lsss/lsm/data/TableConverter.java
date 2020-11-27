@@ -77,12 +77,14 @@ public class TableConverter {
             int valueSize = buffer.getInt();
             if (sparse) {
                 if (keysCounter++ % indexSparseStep == 0 || !buffer.hasRemaining()) {
+                    if (keySize > 4) {
+                        keyBuffer = ByteBuffer.wrap(keyBuffer.limit(4).array());
+                    }
                     keys.put(keyBuffer, new KeyInfo(keyOffset, valueOffset, keySize, valueSize));
                 }
             } else {
                 keys.put(keyBuffer, new KeyInfo(keyOffset, valueOffset, keySize, valueSize));
             }
-
             keyOffset += 12;
             keyOffset += keySize;
         }

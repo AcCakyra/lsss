@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
+import java.util.TreeMap;
 
 public class SST implements Resource {
 
@@ -37,14 +38,10 @@ public class SST implements Resource {
 
     @Override
     public Record get(ByteBuffer key) {
-        ByteBuffer fromKey = index.floorKey(key);
-        ByteBuffer toKey = index.ceilingKey(key);
-
-        if (fromKey == null || toKey == null) {
+        if (key.compareTo(firstKey()) < 0) {
             return null;
         }
-
-        NavigableMap<ByteBuffer, KeyInfo> candidateMap = loadIndex(fromKey, toKey);
+        NavigableMap<ByteBuffer, KeyInfo> candidateMap = loadIndex(key, key);
         for (Map.Entry<ByteBuffer, KeyInfo> candidate : candidateMap.entrySet()) {
             if (candidate.getKey().equals(key)) {
                 return get(candidate.getKey(), candidate.getValue());
@@ -95,13 +92,19 @@ public class SST implements Resource {
                 .iterator();
     }
 
-    private NavigableMap<ByteBuffer, KeyInfo> loadIndex(ByteBuffer fromKey, ByteBuffer toKey) {
-        int from = index.get(fromKey).getIndexOffset();
-        KeyInfo toKeyInfo = index.get(toKey);
-        int to = toKeyInfo.getIndexOffset() + toKeyInfo.getKeySize() + 12;
-        int length = to - from;
+    private NavigableMap<ByteBuffer, KeyInfo> loadIndex(ByteBuffer from, ByteBuffer to) {
+        ByteBuffer fromKey = index.floorKey(from);
+        ByteBuffer toKey = index.ceilingKey(to);
 
-        ByteBuffer buffer = FileReader.read(indexFileName, from + 4, length);
+        if (fromKey == null) fromKey = index.firstKey();
+        if (toKey == null) toKey = index.lastKey();
+
+        int readFrom = index.get(fromKey).getIndexOffset();
+        KeyInfo toKeyInfo = index.get(toKey);
+        int readTo = toKeyInfo.getIndexOffset() + toKeyInfo.getKeySize() + 12;
+        int length = readTo - readFrom;
+
+        ByteBuffer buffer = FileReader.read(indexFileName, readFrom + 4, length);
         return TableConverter.parseIndexBuffer(buffer, false);
     }
 
