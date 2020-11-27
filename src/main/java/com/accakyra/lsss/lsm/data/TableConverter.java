@@ -61,16 +61,30 @@ public class TableConverter {
         return new Table(indexBuffer, sstBuffer);
     }
 
-    public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBuffer(ByteBuffer buffer) {
+    public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBuffer(ByteBuffer buffer, boolean sparse) {
+        int indexSparseStep = 10;
+        int keysCounter = 0;
+
         NavigableMap<ByteBuffer, KeyInfo> keys = new TreeMap<>();
+
+        int keyOffset = 0;
         while (buffer.hasRemaining()) {
             int keySize = buffer.getInt();
             byte[] key = new byte[keySize];
             buffer.get(key);
             ByteBuffer keyBuffer = ByteBuffer.wrap(key);
-            int offset = buffer.getInt();
+            int valueOffset = buffer.getInt();
             int valueSize = buffer.getInt();
-            keys.put(keyBuffer, new KeyInfo(offset, valueSize));
+            if (sparse) {
+                if (keysCounter++ % indexSparseStep == 0 || !buffer.hasRemaining()) {
+                    keys.put(keyBuffer, new KeyInfo(keyOffset, valueOffset, keySize, valueSize));
+                }
+            } else {
+                keys.put(keyBuffer, new KeyInfo(keyOffset, valueOffset, keySize, valueSize));
+            }
+
+            keyOffset += 12;
+            keyOffset += keySize;
         }
         return keys;
     }

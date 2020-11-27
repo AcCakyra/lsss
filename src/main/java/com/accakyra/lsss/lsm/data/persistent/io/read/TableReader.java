@@ -55,8 +55,8 @@ public class TableReader {
             Path sstFileName = FileNameUtil.buildSSTableFileName(data.toPath(), id);
             ByteBuffer indexBuffer = FileReader.read(indexFileName);
             int level = indexBuffer.getInt();
-            NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(indexBuffer);
-            SST sst = new SST(index, id, sstFileName, level);
+            NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(indexBuffer, true);
+            SST sst = new SST(index, id, sstFileName, indexFileName, level);
             ssts.add(sst);
         }
         return ssts;
