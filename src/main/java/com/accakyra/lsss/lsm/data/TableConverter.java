@@ -1,6 +1,7 @@
 package com.accakyra.lsss.lsm.data;
 
 import com.accakyra.lsss.Record;
+import com.accakyra.lsss.lsm.Config;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
 import com.accakyra.lsss.lsm.data.persistent.sst.KeyInfo;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
@@ -62,7 +63,6 @@ public class TableConverter {
     }
 
     public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBuffer(ByteBuffer buffer, boolean sparse) {
-        int indexSparseStep = 10;
         int keysCounter = 0;
 
         NavigableMap<ByteBuffer, KeyInfo> keys = new TreeMap<>();
@@ -75,8 +75,8 @@ public class TableConverter {
             ByteBuffer keyBuffer = ByteBuffer.wrap(key);
             int valueOffset = buffer.getInt();
             int valueSize = buffer.getInt();
-            if (sparse && (keysCounter++ % indexSparseStep == 0 || !buffer.hasRemaining())) {
-                if (keySize > 4) keyBuffer = ByteBuffer.wrap(keyBuffer.limit(4).array());
+            if (sparse && (keysCounter++ % Config.SPARSE_STEP == 0 || !buffer.hasRemaining())) {
+                if (keySize > Config.MAX_KEY_SIZE) keyBuffer = ByteBuffer.wrap(keyBuffer.limit(Config.MAX_KEY_SIZE).array());
                 keys.put(keyBuffer, new KeyInfo(keyOffset, valueOffset, keySize, valueSize));
             }
             if (!sparse) keys.put(keyBuffer, new KeyInfo(keyOffset, valueOffset, keySize, valueSize));

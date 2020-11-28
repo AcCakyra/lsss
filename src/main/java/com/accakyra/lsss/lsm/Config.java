@@ -1,6 +1,7 @@
 package com.accakyra.lsss.lsm;
 
 public class Config {
+
     /**
      * Maximum possible size of memtable before flushing
      * on persistence storage.
@@ -17,5 +18,13 @@ public class Config {
      */
     public final static int FANOUT = 4;
 
-//    public final static int SPARSE
+    /**
+     * Count of k/v pairs indexed by one value in sparse index.
+     */
+    public final static int SPARSE_STEP = 10;
+
+    /**
+     * Max count of bytes for single key in spars index;
+     */
+    public final static int MAX_KEY_SIZE = 16;
 }

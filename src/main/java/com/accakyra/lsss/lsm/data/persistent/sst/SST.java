@@ -37,9 +37,9 @@ public class SST implements Resource {
 
     @Override
     public Record get(ByteBuffer key) {
-        if (key.compareTo(firstKey()) < 0) {
-            return null;
-        }
+        if (key.compareTo(firstKey()) < 0) return null;
+        if (index.get(key) != null) return get(key, index.get(key));
+
         NavigableMap<ByteBuffer, KeyInfo> candidateMap = loadIndex(key, key);
         for (Map.Entry<ByteBuffer, KeyInfo> candidate : candidateMap.entrySet()) {
             if (candidate.getKey().equals(key)) {
