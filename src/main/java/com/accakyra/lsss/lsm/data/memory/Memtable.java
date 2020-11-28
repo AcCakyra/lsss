@@ -71,9 +71,7 @@ public class Memtable implements Resource {
 
     @Override
     public Iterator<Record> iterator() {
-        if (memtable.isEmpty()) {
-            return Collections.emptyIterator();
-        }
+        if (isEmpty()) return Collections.emptyIterator();
         return iterator(memtable.firstKey().getKey());
     }
 
@@ -88,7 +86,10 @@ public class Memtable implements Resource {
         VersionedKey toKey = null;
         if (to != null) toKey = new VersionedKey(to, snapshot);
 
-        Iterator<VersionedKey> versionedKeyIterator = IteratorsUtil.navigableIterator(memtable.navigableKeySet(), fromKey, toKey);
-        return Iterators.transform(versionedKeyIterator, this::get);
+        Iterator<Record> iterator = Iterators.transform(
+                IteratorsUtil.navigableIterator(memtable.navigableKeySet(), fromKey, toKey),
+                this::get);
+
+        return IteratorsUtil.distinctIterator(iterator);
     }
 }

@@ -6,7 +6,6 @@ import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
 import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.data.persistent.Store;
-import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
 
 import java.io.File;
 import java.nio.ByteBuffer;
@@ -16,6 +15,8 @@ import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+
+import static com.accakyra.lsss.lsm.util.iterators.IteratorsUtil.*;
 
 public class LSMTree implements DAO {
 
@@ -57,52 +58,54 @@ public class LSMTree implements DAO {
 
     @Override
     public CloseableIterator<Record> iterator() {
-        List<Iterator<Record>> iterators = new ArrayList<>();
         lsmLock.readLock().lock();
-        iterators.add(memtable.iterator());
         fileLock.readLock().lock();
+
+        List<Iterator<Record>> iterators = new ArrayList<>();
+        iterators.add(memtable.iterator());
         for (Resource resource : store.getResources()) iterators.add(resource.iterator());
         lsmLock.readLock().unlock();
-        return IteratorsUtil.closeableIterator(
-                IteratorsUtil.removeTombstonesIterator(
-                        IteratorsUtil.distinctIterator(
-                                IteratorsUtil.mergeIterator(iterators))),
-                () -> fileLock.readLock().unlock());
+
+        return wrapIterators(iterators);
     }
 
     @Override
     public CloseableIterator<Record> iterator(ByteBuffer from) {
-        List<Iterator<Record>> iterators = new ArrayList<>();
         lsmLock.readLock().lock();
-        iterators.add(memtable.iterator(from));
         fileLock.readLock().lock();
+
+        List<Iterator<Record>> iterators = new ArrayList<>();
+        iterators.add(memtable.iterator(from));
         for (Resource resource : store.getResources()) iterators.add(resource.iterator(from));
         lsmLock.readLock().unlock();
-        return IteratorsUtil.closeableIterator(
-                IteratorsUtil.removeTombstonesIterator(
-                        IteratorsUtil.distinctIterator(
-                                IteratorsUtil.mergeIterator(iterators))),
-                () -> fileLock.readLock().unlock());
+
+        return wrapIterators(iterators);
     }
 
     @Override
     public CloseableIterator<Record> iterator(ByteBuffer from, ByteBuffer to) {
-        List<Iterator<Record>> iterators = new ArrayList<>();
         lsmLock.readLock().lock();
-        iterators.add(memtable.iterator(from, to));
         fileLock.readLock().lock();
+
+        List<Iterator<Record>> iterators = new ArrayList<>();
+        iterators.add(memtable.iterator(from, to));
         for (Resource resource : store.getResources()) iterators.add(resource.iterator(from, to));
         lsmLock.readLock().unlock();
-        return IteratorsUtil.closeableIterator(
-                IteratorsUtil.removeTombstonesIterator(
-                        IteratorsUtil.distinctIterator(
-                                IteratorsUtil.mergeIterator(iterators))),
-                () -> fileLock.readLock().unlock());
+
+        return wrapIterators(iterators);
     }
 
     private ByteBuffer extractValue(Record record) {
         if (record == null || record.getValue().equals(Record.TOMBSTONE)) throw new NoSuchElementException();
         else return record.getValue();
+    }
+
+    private CloseableIterator<Record> wrapIterators(List<Iterator<Record>> iterators) {
+        return closeableIterator(
+                removeTombstonesIterator(
+                        distinctIterator(
+                                mergeIterator(iterators))),
+                () -> fileLock.readLock().unlock());
     }
 
     @Override

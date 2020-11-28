@@ -23,49 +23,26 @@ import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
 public class Store implements Closeable {
 
-    private class WriteSSTTask implements Runnable {
+    private class PutMemtableTask implements Runnable {
 
         private final Memtable immtable;
         private final int tableId;
 
-        public WriteSSTTask(Memtable immtable, int tableId) {
+        public PutMemtableTask(Memtable immtable, int tableId) {
             this.immtable = immtable;
             this.tableId = tableId;
         }
 
         @Override
         public void run() {
-            int level = 0;
-            Table table = TableConverter.convertMemtableToTable(immtable, level);
-            TableWriter.writeTable(table, tableId, storage);
-            NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(table.getIndexBuffer().position(4), true);
-            Path sstFileName = FileNameUtil.buildSSTableFileName(storage, tableId);
-            Path indexFileName = FileNameUtil.buildIndexFileName(storage, tableId);
-            SST sst = new SST(index, tableId, sstFileName, indexFileName, level);
-            compactor.execute(new CompactTask(sst));
-        }
-    }
-
-    private class CompactTask implements Runnable {
-
-        private final SST sst;
-
-        public CompactTask(SST sst) {
-            this.sst = sst;
-        }
-
-        @Override
-        public void run() {
+            SST sst = flushMemtable(immtable, tableId, 0);
             levelsLock.writeLock().lock();
             Level newZeroLevel = levels.getLevel(0);
             newZeroLevel.add(sst);
@@ -100,9 +77,8 @@ public class Store implements Closeable {
     }
 
     private final Levels levels;
-    private final ExecutorService writer;
-    private final ExecutorService compactor;
-    private final ExecutorService fileRemover;
+    private final ExecutorService memtablePusher;
+    private final ExecutorService fileWorker;
     private final Semaphore semaphore;
     private final ReadWriteLock fileLock;
     private final ReadWriteLock levelsLock;
@@ -111,9 +87,8 @@ public class Store implements Closeable {
 
     public Store(File data, ReadWriteLock fileLock) {
         this.levels = new Levels(data);
-        this.writer = Executors.newSingleThreadExecutor();
-        this.compactor = Executors.newSingleThreadExecutor();
-        this.fileRemover = Executors.newSingleThreadExecutor();
+        this.memtablePusher = Executors.newSingleThreadExecutor();
+        this.fileWorker = Executors.newSingleThreadExecutor();
         this.metadata = new Metadata(data);
         this.semaphore = new Semaphore(Config.MAX_MEMTABLE_COUNT);
         this.fileLock = fileLock;
@@ -147,10 +122,24 @@ public class Store implements Closeable {
         levels.addImmtable(tableId, memtable);
         levelsLock.writeLock().unlock();
 
-        writer.submit(new WriteSSTTask(memtable, tableId));
+        memtablePusher.submit(new PutMemtableTask(memtable, tableId));
+    }
+
+    private SST flushMemtable(Memtable immtable, int tableId, int level) {
+        Table table = TableConverter.convertMemtableToTable(immtable, level);
+        try {
+            fileWorker.submit(() -> TableWriter.writeTable(table, tableId, storage)).get();
+        } catch (InterruptedException | ExecutionException e) {
+            e.printStackTrace();
+        }
+        NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(table.getIndexBuffer().position(4), true);
+        Path sstFileName = FileNameUtil.buildSSTableFileName(storage, tableId);
+        Path indexFileName = FileNameUtil.buildIndexFileName(storage, tableId);
+        return new SST(index, tableId, sstFileName, indexFileName, level);
     }
 
     private void compact() {
+
         int level = 0;
         while (levels.levelOverflow(level) > 0) {
             List<SST> sstablesToRemove = new ArrayList<>();
@@ -243,43 +232,23 @@ public class Store implements Closeable {
                             IteratorsUtil.mergeIterator(
                                     List.of(currentLevelIterator, nextLevelIterator)));
 
-            Memtable memtable = new Memtable();
 
             Level newNextLevel = nextLevel.copy();
+            Memtable memtable = new Memtable();
 
             while (iterator.hasNext()) {
                 Record record = iterator.next();
                 memtable.upsert(record.getKey(), record.getValue());
-
-                if (!memtable.hasSpace()) {
+                if (!memtable.hasSpace() || !iterator.hasNext()) {
                     int tableId = metadata.getAndIncrementTableId();
-                    Table table = TableConverter.convertMemtableToTable(memtable, level + 1);
-                    TableWriter.writeTable(table, tableId, storage);
-                    NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(table.getIndexBuffer().position(4), true);
-                    Path sstFileName = FileNameUtil.buildSSTableFileName(storage, tableId);
-                    Path indexFileName = FileNameUtil.buildIndexFileName(storage, tableId);
-                    SST sst = new SST(index, tableId, sstFileName, indexFileName, level + 1);
+                    SST sst = flushMemtable(memtable, tableId, level + 1);
                     newNextLevel.add(sst);
-
                     memtable = new Memtable();
                 }
             }
 
-            if (!memtable.isEmpty()) {
-                int tableId = metadata.getAndIncrementTableId();
-                Table table = TableConverter.convertMemtableToTable(memtable, level + 1);
-                TableWriter.writeTable(table, tableId, storage);
-                NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(table.getIndexBuffer().position(4), true);
-                Path sstFileName = FileNameUtil.buildSSTableFileName(storage, tableId);
-                Path indexFileName = FileNameUtil.buildIndexFileName(storage, tableId);
-                SST sst = new SST(index, tableId, sstFileName, indexFileName, level + 1);
-                newNextLevel.add(sst);
-            }
-
             levels.addLevel(level + 1, newNextLevel);
-
-            fileRemover.execute(new RemoveFilesTask(sstablesToRemove));
-
+            fileWorker.execute(new RemoveFilesTask(sstablesToRemove));
             level++;
         }
     }
@@ -291,14 +260,11 @@ public class Store implements Closeable {
                 semaphore.acquire();
             }
 
-            writer.shutdown();
-            writer.awaitTermination(1, TimeUnit.HOURS);
+            memtablePusher.shutdown();
+            memtablePusher.awaitTermination(1, TimeUnit.HOURS);
 
-            compactor.shutdown();
-            compactor.awaitTermination(1, TimeUnit.HOURS);
-
-            fileRemover.shutdown();
-            fileRemover.awaitTermination(1, TimeUnit.HOURS);
+            fileWorker.shutdown();
+            fileWorker.awaitTermination(1, TimeUnit.HOURS);
 
             metadata.close();
         } catch (InterruptedException e) {

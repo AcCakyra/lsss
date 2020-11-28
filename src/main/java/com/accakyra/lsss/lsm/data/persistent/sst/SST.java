@@ -10,7 +10,6 @@ import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
-import java.util.TreeMap;
 
 public class SST implements Resource {
 

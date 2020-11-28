@@ -16,4 +16,6 @@ public class Config {
      * The size ratio of adjacent levels.
      */
     public final static int FANOUT = 4;
+
+//    public final static int SPARSE
 }
