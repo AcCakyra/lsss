@@ -58,6 +58,12 @@ A million records per test. Each record has a 16 byte key, and a 100 byte value.
     Records:    1000000
     Raw Size:   110.6 MB
 
+See actual code in test/PerformanceTest
+
+    Random read/write
+    Read: 4.8 MB per second
+    Write: 59 MB per second
+
 ## Example Usage
 
 ```java
