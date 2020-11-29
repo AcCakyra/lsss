@@ -4,9 +4,9 @@ public class Config {
 
     public static class Builder {
 
-        private int memtableSize = 4 * 1024 * 1024;
+        private int memtableSize = 16 * 1024 * 1024;
         private int maxImmtableCount = 10;
-        private int fanout = 4;
+        private int fanout = 10;
         private int sparseStep = 10;
         private int maxKeySize = 16;
 
