@@ -1,7 +1,6 @@
 package com.accakyra.lsss.lsm.data.memory;
 
 import com.accakyra.lsss.Record;
-import com.accakyra.lsss.lsm.Config;
 import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
 import com.google.common.collect.Iterators;
@@ -13,8 +12,8 @@ public class Memtable implements Resource {
 
     private final NavigableMap<VersionedKey, ByteBuffer> memtable;
     private int snapshot;
-    private int keysCapacity;
-    private int valuesCapacity;
+    private int keysSize;
+    private int valuesSize;
     private int uniqueKeysCount;
 
     public Memtable() {
@@ -42,27 +41,23 @@ public class Memtable implements Resource {
     public void upsert(ByteBuffer key, ByteBuffer value) {
         if (get(key) == null) {
             uniqueKeysCount++;
-            keysCapacity += key.limit();
+            keysSize += key.limit();
         }
-        valuesCapacity += value.limit();
+        valuesSize += value.limit();
         VersionedKey versionedKey = new VersionedKey(key, snapshot++);
         memtable.put(versionedKey, value);
-    }
-
-    public boolean hasSpace() {
-        return getTotalBytesCapacity() <= Config.MEMTABLE_THRESHOLD;
     }
 
     public boolean isEmpty() {
         return getUniqueKeysCount() == 0;
     }
 
-    public int getTotalBytesCapacity() {
-        return keysCapacity + valuesCapacity;
+    public int getSize() {
+        return keysSize + valuesSize;
     }
 
-    public int getKeysCapacity() {
-        return keysCapacity;
+    public int getKeysSize() {
+        return keysSize;
     }
 
     public int getUniqueKeysCount() {

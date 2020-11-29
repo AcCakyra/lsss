@@ -1,16 +1,12 @@
 package com.accakyra.lsss.lsm.data;
 
 import com.accakyra.lsss.Record;
-import com.accakyra.lsss.lsm.Config;
+import com.accakyra.lsss.Config;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
 import com.accakyra.lsss.lsm.data.persistent.sst.KeyInfo;
-import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 import com.accakyra.lsss.lsm.data.persistent.io.Table;
-import com.accakyra.lsss.lsm.util.FileNameUtil;
-import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
 
 import java.nio.ByteBuffer;
-import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.NavigableMap;
 import java.util.TreeMap;
@@ -26,8 +22,8 @@ public class TableConverter {
         //   ) * count of keys
         // + size of all keys
         int keysInfoSize = (4 + 4 + 4) * memtable.getUniqueKeysCount();
-        int indexSize = 4 + memtable.getKeysCapacity() + keysInfoSize;
-        int memtableSize = memtable.getTotalBytesCapacity();
+        int indexSize = 4 + memtable.getKeysSize() + keysInfoSize;
+        int memtableSize = memtable.getSize();
 
         ByteBuffer indexBuffer = ByteBuffer.allocateDirect(indexSize);
         ByteBuffer sstBuffer = ByteBuffer.allocateDirect(memtableSize);
@@ -62,24 +58,30 @@ public class TableConverter {
         return new Table(indexBuffer, sstBuffer);
     }
 
-    public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBuffer(ByteBuffer buffer, boolean sparse) {
-        int keysCounter = 0;
+    public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBuffer(ByteBuffer indexBuffer) {
+        return parseIndexBufferSparse(indexBuffer, Integer.MAX_VALUE, 1);
+    }
 
+    public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBufferSparse(
+            ByteBuffer indexBuffer, int maxKeySize, int sparseStep) {
+
+        int keysCounter = 0;
         NavigableMap<ByteBuffer, KeyInfo> keys = new TreeMap<>();
 
         int keyOffset = 0;
-        while (buffer.hasRemaining()) {
-            int keySize = buffer.getInt();
+        while (indexBuffer.hasRemaining()) {
+            int keySize = indexBuffer.getInt();
             byte[] key = new byte[keySize];
-            buffer.get(key);
+            indexBuffer.get(key);
             ByteBuffer keyBuffer = ByteBuffer.wrap(key);
-            int valueOffset = buffer.getInt();
-            int valueSize = buffer.getInt();
-            if (sparse && (keysCounter++ % Config.SPARSE_STEP == 0 || !buffer.hasRemaining())) {
-                if (keySize > Config.MAX_KEY_SIZE) keyBuffer = ByteBuffer.wrap(keyBuffer.limit(Config.MAX_KEY_SIZE).array());
+            int valueOffset = indexBuffer.getInt();
+            int valueSize = indexBuffer.getInt();
+            if (keysCounter++ % sparseStep == 0 || !indexBuffer.hasRemaining()) {
+                if (keySize > maxKeySize) {
+                    keyBuffer = ByteBuffer.wrap(keyBuffer.limit(maxKeySize).array());
+                }
                 keys.put(keyBuffer, new KeyInfo(keyOffset, valueOffset, keySize, valueSize));
             }
-            if (!sparse) keys.put(keyBuffer, new KeyInfo(keyOffset, valueOffset, keySize, valueSize));
             keyOffset += 12;
             keyOffset += keySize;
         }

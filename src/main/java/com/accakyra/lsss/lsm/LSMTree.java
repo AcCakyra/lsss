@@ -1,6 +1,7 @@
 package com.accakyra.lsss.lsm;
 
 import com.accakyra.lsss.CloseableIterator;
+import com.accakyra.lsss.Config;
 import com.accakyra.lsss.DAO;
 import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
@@ -24,19 +25,21 @@ public class LSMTree implements DAO {
     private final Store store;
     private final ReadWriteLock lsmLock;
     private final ReadWriteLock fileLock;
+    private final Config config;
 
-    public LSMTree(File data) {
+    public LSMTree(File data, Config config) {
         this.memtable = new Memtable();
         this.lsmLock = new ReentrantReadWriteLock();
         this.fileLock = new ReentrantReadWriteLock();
-        this.store = new Store(data, fileLock);
+        this.store = new Store(data, fileLock, config);
+        this.config = config;
     }
 
     @Override
     public void upsert(ByteBuffer key, ByteBuffer value) {
         lsmLock.writeLock().lock();
         memtable.upsert(key, value);
-        if (!memtable.hasSpace()) {
+        if (memtable.getSize() > config.getMemtableSize()) {
             writeMemtable();
         }
         lsmLock.writeLock().unlock();

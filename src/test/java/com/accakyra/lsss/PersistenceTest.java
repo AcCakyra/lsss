@@ -1,6 +1,5 @@
 package com.accakyra.lsss;
 
-import com.accakyra.lsss.lsm.Config;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 

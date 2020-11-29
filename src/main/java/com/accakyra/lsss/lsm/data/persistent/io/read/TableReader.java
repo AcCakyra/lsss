@@ -1,5 +1,6 @@
 package com.accakyra.lsss.lsm.data.persistent.io.read;
 
+import com.accakyra.lsss.Config;
 import com.accakyra.lsss.lsm.data.persistent.level.Level;
 import com.accakyra.lsss.lsm.data.TableConverter;
 import com.accakyra.lsss.lsm.data.persistent.level.Level0;
@@ -17,9 +18,10 @@ import java.util.stream.Collectors;
 
 public class TableReader {
 
-    public static Map<Integer, Level> readLevels(File data) {
+    public static Map<Integer, Level> readLevels(File data, Config config) {
         Map<Integer, List<SST>> sstableMap =
-                readSSTs(data).stream()
+                readSSTables(data, config)
+                        .stream()
                         .collect(Collectors.groupingBy(SST::getLevel));
 
         Map<Integer, Level> levels = new HashMap<>();
@@ -47,7 +49,7 @@ public class TableReader {
         return levels;
     }
 
-    private static List<SST> readSSTs(File data) {
+    private static List<SST> readSSTables(File data, Config config) {
         List<Integer> tableIds = findAllTableIds(data);
         List<SST> ssts = new ArrayList<>();
         for (int id : tableIds) {
@@ -55,9 +57,9 @@ public class TableReader {
             Path sstFileName = FileNameUtil.buildSSTableFileName(data.toPath(), id);
             ByteBuffer indexBuffer = FileReader.read(indexFileName);
             int level = indexBuffer.getInt();
-            NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(indexBuffer, true);
-            SST sst = new SST(index, id, sstFileName, indexFileName, level);
-            ssts.add(sst);
+            NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBufferSparse(
+                    indexBuffer, config.getMaxKeySize(), config.getSparseStep());
+            ssts.add(new SST(index, id, sstFileName, indexFileName, level));
         }
         return ssts;
     }
@@ -66,7 +68,6 @@ public class TableReader {
         return Arrays.stream(data.listFiles())
                 .map(File::getName)
                 .filter(FileNameUtil::isIndexFileName)
-                .map(name -> name.replaceAll("[^0-9]", ""))
                 .mapToInt(FileNameUtil::extractIdFormIndexFileName)
                 .boxed()
                 .collect(Collectors.toList());

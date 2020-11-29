@@ -104,7 +104,7 @@ public class SST implements Resource {
         int length = readTo - readFrom;
 
         ByteBuffer buffer = FileReader.read(indexFileName, readFrom + 4, length);
-        return TableConverter.parseIndexBuffer(buffer, false);
+        return TableConverter.parseIndexBuffer(buffer);
     }
 
     private Record get(ByteBuffer key, KeyInfo info) {

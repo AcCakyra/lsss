@@ -1,7 +1,7 @@
 package com.accakyra.lsss.lsm.data.persistent.level;
 
+import com.accakyra.lsss.Config;
 import com.accakyra.lsss.Record;
-import com.accakyra.lsss.lsm.Config;
 import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
 import com.accakyra.lsss.lsm.data.persistent.io.read.TableReader;
@@ -15,9 +15,9 @@ public class Levels {
     private final Map<Integer, Memtable> immtables;
     private final Map<Integer, Level> levels;
 
-    public Levels(File data) {
+    public Levels(File data, Config config) {
         this.immtables = new TreeMap<>(Comparator.reverseOrder());
-        this.levels = TableReader.readLevels(data);
+        this.levels = TableReader.readLevels(data, config);
     }
 
     public Record get(ByteBuffer key) {
@@ -52,9 +52,5 @@ public class Levels {
 
     public void addLevel(int levelNumber, Level level) {
         levels.put(levelNumber, level);
-    }
-
-    public int levelOverflow(int level) {
-        return levels.get(level).size() - (int) Math.pow(Config.FANOUT, level + 1);
     }
 }

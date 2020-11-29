@@ -1,7 +1,7 @@
 package com.accakyra.lsss.lsm.data.persistent;
 
 import com.accakyra.lsss.Record;
-import com.accakyra.lsss.lsm.Config;
+import com.accakyra.lsss.Config;
 import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.data.TableConverter;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
@@ -49,7 +49,7 @@ public class Store implements Closeable {
             levels.addLevel(0, newZeroLevel);
             levels.deleteImmtable(sst.getId());
             semaphore.release();
-            if (levels.levelOverflow(0) > 0) {
+            if (newZeroLevel.size() > Math.pow(config.getFanout(), 1)) {
                 compact();
             }
             levelsLock.writeLock().unlock();
@@ -84,16 +84,18 @@ public class Store implements Closeable {
     private final ReadWriteLock levelsLock;
     private final Path storage;
     private final Metadata metadata;
+    private final Config config;
 
-    public Store(File data, ReadWriteLock fileLock) {
-        this.levels = new Levels(data);
+    public Store(File data, ReadWriteLock fileLock, Config config) {
+        this.levels = new Levels(data, config);
         this.memtablePusher = Executors.newSingleThreadExecutor();
         this.fileWorker = Executors.newSingleThreadExecutor();
         this.metadata = new Metadata(data);
-        this.semaphore = new Semaphore(Config.MAX_MEMTABLE_COUNT);
+        this.semaphore = new Semaphore(config.getMaxImmtableCount());
         this.fileLock = fileLock;
         this.levelsLock = new ReentrantReadWriteLock();
         this.storage = data.toPath();
+        this.config = config;
     }
 
     public Record get(ByteBuffer key) {
@@ -132,7 +134,9 @@ public class Store implements Closeable {
         } catch (InterruptedException | ExecutionException e) {
             e.printStackTrace();
         }
-        NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBuffer(table.getIndexBuffer().position(4), true);
+        NavigableMap<ByteBuffer, KeyInfo> index =
+                TableConverter.parseIndexBufferSparse(
+                        table.getIndexBuffer().position(4), config.getMaxKeySize(), config.getSparseStep());
         Path sstFileName = FileNameUtil.buildSSTableFileName(storage, tableId);
         Path indexFileName = FileNameUtil.buildIndexFileName(storage, tableId);
         return new SST(index, tableId, sstFileName, indexFileName, level);
@@ -141,7 +145,7 @@ public class Store implements Closeable {
     private void compact() {
 
         int level = 0;
-        while (levels.levelOverflow(level) > 0) {
+        while (levels.getLevel(level).size() - Math.pow(config.getFanout(), level + 1) > 0) {
             List<SST> sstablesToRemove = new ArrayList<>();
             Iterator<Record> currentLevelIterator;
             ByteBuffer from = null;
@@ -173,9 +177,9 @@ public class Store implements Closeable {
                                                 .collect(Collectors.toList())));
                 levels.addLevel(0, new Level0());
             } else {
-                int diff = levels.levelOverflow(level);
+                int levelOferflow = (int) (levels.getLevel(level).size() - Math.pow(config.getFanout(), level + 1));
 
-                for (int i = 0; i < diff; i++) {
+                for (int i = 0; i < levelOferflow; i++) {
                     int random = new Random().nextInt(currentLevel.size());
                     SST sstToRemove = currentLevel.getSstables().stream().skip(random).findFirst().get();
                     if (from == null) {
@@ -239,7 +243,7 @@ public class Store implements Closeable {
             while (iterator.hasNext()) {
                 Record record = iterator.next();
                 memtable.upsert(record.getKey(), record.getValue());
-                if (!memtable.hasSpace() || !iterator.hasNext()) {
+                if (memtable.getSize() > config.getMemtableSize() || !iterator.hasNext()) {
                     int tableId = metadata.getAndIncrementTableId();
                     SST sst = flushMemtable(memtable, tableId, level + 1);
                     newNextLevel.add(sst);
@@ -256,7 +260,7 @@ public class Store implements Closeable {
     @Override
     public void close() {
         try {
-            for (int i = 0; i < Config.MAX_MEMTABLE_COUNT; i++) {
+            for (int i = 0; i < config.getMaxImmtableCount(); i++) {
                 semaphore.acquire();
             }
 
