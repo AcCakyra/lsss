@@ -36,13 +36,27 @@ SST is a bunch of sorted k/v pairs.
 ### Index
 
 Index is bunch of sorted map (key -> info about key).
-Main component of info is a offset of key in sst file.
+Main component of info is a offset of value in sst file.
 
 Sparse index contains part of real index to decrease ram usage.
 
 ### Level
 
 Level is bunch of sorted SST. Every level bigger than previous one in T(4 by default) times.
+
+### Performance
+
+Note: Tests are were made depending on my naive understanding of OS and disk I/O. So be carefully while analyzing this.
+
+Setup:
+A million records per test. Each record has a 16 byte key, and a 100 byte value. 
+       
+    SSD:        SAMSUNG MZVLB512HAJQ-00000
+    CPU:        Intel(R) Core(TM) i7-10510U CPU @ 1.80GHz
+    Keys:       16 bytes each
+    Values:     100 bytes each (50 bytes after compression)
+    Records:    1000000
+    Raw Size:   110.6 MB
 
 ## Example Usage
 
