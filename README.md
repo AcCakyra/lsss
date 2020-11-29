@@ -9,7 +9,7 @@ Note: It isn't production ready k/v storage, so don't use it in production.
 ### Write
 
 All new updates handled by in-memory memtable, and when memtable size become bigger
-than the special threshold (4 MB by default) it asynchronously flushes to disk.
+than the special threshold (16 MB by default) it asynchronously flushes to disk.
 
 ### Read
 
@@ -42,7 +42,7 @@ Sparse index contains part of real index to decrease ram usage.
 
 ### Level
 
-Level is bunch of sorted SST. Every level bigger than previous one in T(4 by default) times.
+Level is bunch of sorted SST. Every level bigger than previous one in T(10 by default) times.
 
 ### Performance
 
