@@ -7,7 +7,7 @@ import java.io.File;
 public class DAOFactory {
 
     public static DAO create(File data) {
-        return create(data, new Config.Builder().build());
+        return create(data, Config.builder().build());
     }
 
     public static DAO create(File data, Config config) {

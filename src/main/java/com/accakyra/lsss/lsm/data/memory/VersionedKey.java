@@ -1,24 +1,16 @@
 package com.accakyra.lsss.lsm.data.memory;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 import java.nio.ByteBuffer;
 
+@Getter
+@AllArgsConstructor
 public class VersionedKey implements Comparable<VersionedKey> {
 
     private final ByteBuffer key;
     private final int version;
-
-    public VersionedKey(ByteBuffer key, int version) {
-        this.key = key;
-        this.version = version;
-    }
-
-    public ByteBuffer getKey() {
-        return key;
-    }
-
-    public int getVersion() {
-        return version;
-    }
 
     @Override
     public int compareTo(VersionedKey o) {

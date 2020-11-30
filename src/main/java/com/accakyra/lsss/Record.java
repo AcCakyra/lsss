@@ -1,7 +1,12 @@
 package com.accakyra.lsss;
 
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+
 import java.nio.ByteBuffer;
 
+@Getter
+@AllArgsConstructor
 public class Record implements Comparable<Record> {
 
     /**
@@ -10,19 +15,6 @@ public class Record implements Comparable<Record> {
     public static final ByteBuffer TOMBSTONE = ByteBuffer.wrap("TTTT".getBytes());
     private final ByteBuffer key;
     private final ByteBuffer value;
-
-    public Record(ByteBuffer key, ByteBuffer value) {
-        this.key = key;
-        this.value = value;
-    }
-
-    public ByteBuffer getKey() {
-        return key;
-    }
-
-    public ByteBuffer getValue() {
-        return value;
-    }
 
     @Override
     public int compareTo(Record o) {
