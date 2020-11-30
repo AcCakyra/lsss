@@ -9,7 +9,6 @@ import java.util.Map;
 
 public class PerformanceTest extends TestBase {
 
-    @Test
     void writePerformance() throws IOException {
         int recordCount = 1_000_000;
         Map<ByteBuffer, ByteBuffer> records = new HashMap<>();
@@ -30,7 +29,6 @@ public class PerformanceTest extends TestBase {
         System.out.println(((16 + 100) * recordCount / (1024 * 1024) / time) + " MB per second");
     }
 
-    @Test
     void readPerformance() throws IOException {
         int recordCount = 1_000_000;
         Map<ByteBuffer, ByteBuffer> records = new HashMap<>();
