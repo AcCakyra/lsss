@@ -9,7 +9,7 @@ import java.util.Set;
 
 public class FileWriter {
 
-    public static void write(Path fileName, ByteBuffer content) {
+    public static void write(Path fileName, ByteBuffer content) throws IOException {
         Set<StandardOpenOption> options = Set.of(
                 StandardOpenOption.WRITE,
                 StandardOpenOption.READ,
@@ -21,8 +21,6 @@ public class FileWriter {
                 if (bytes <= 0) break;
             }
             channel.force(true);
-        } catch (IOException e) {
-            e.printStackTrace();
         }
     }
 }

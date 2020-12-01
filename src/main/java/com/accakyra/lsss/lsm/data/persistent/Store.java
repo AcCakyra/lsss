@@ -6,6 +6,7 @@ import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.data.TableConverter;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
 import com.accakyra.lsss.lsm.data.persistent.io.Table;
+import com.accakyra.lsss.lsm.data.persistent.io.read.TableReader;
 import com.accakyra.lsss.lsm.data.persistent.io.write.TableWriter;
 import com.accakyra.lsss.lsm.data.persistent.level.Level;
 import com.accakyra.lsss.lsm.data.persistent.level.Level0;
@@ -13,14 +14,17 @@ import com.accakyra.lsss.lsm.data.persistent.level.LevelN;
 import com.accakyra.lsss.lsm.data.persistent.level.Levels;
 import com.accakyra.lsss.lsm.data.persistent.sst.KeyInfo;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
-import com.accakyra.lsss.lsm.io.FileRemover;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
 import com.accakyra.lsss.lsm.util.iterators.IteratorsUtil;
 import com.google.common.collect.Iterators;
+import com.google.common.util.concurrent.Uninterruptibles;
+import lombok.extern.java.Log;
 
 import java.io.Closeable;
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.*;
@@ -28,6 +32,7 @@ import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 import java.util.stream.Collectors;
 
+@Log
 public class Store implements Closeable {
 
     private class PutMemtableTask implements Runnable {
@@ -69,8 +74,14 @@ public class Store implements Closeable {
             fileLock.writeLock().lock();
             for (SST sst : sstablesToRemove) {
                 int id = sst.getId();
-                FileRemover.remove(FileNameUtil.buildIndexFileName(storage, id));
-                FileRemover.remove(FileNameUtil.buildSSTableFileName(storage, id));
+                try {
+                    Files.deleteIfExists(FileNameUtil.buildIndexFileName(storage, id));
+                    Files.deleteIfExists(FileNameUtil.buildSSTableFileName(storage, id));
+                } catch (IOException e) {
+                    log.log(java.util.logging.Level.SEVERE,
+                            "Cannot delete sst and index with id : " + id + " from disk", e);
+                    throw new RuntimeException(e);
+                }
             }
             fileLock.writeLock().unlock();
         }
@@ -87,7 +98,7 @@ public class Store implements Closeable {
     private final Config config;
 
     public Store(File data, ReadWriteLock fileLock, Config config) {
-        this.levels = new Levels(data, config);
+        this.levels = new Levels(TableReader.readLevels(data, config));
         this.memtablePusher = Executors.newSingleThreadExecutor();
         this.fileWorker = Executors.newSingleThreadExecutor();
         this.metadata = new Metadata(data);
@@ -116,7 +127,7 @@ public class Store implements Closeable {
         try {
             semaphore.acquire();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
         }
 
         int tableId = metadata.getAndIncrementTableId();
@@ -131,8 +142,11 @@ public class Store implements Closeable {
         Table table = TableConverter.convertMemtableToTable(immtable, level);
         try {
             fileWorker.submit(() -> TableWriter.writeTable(table, tableId, storage)).get();
-        } catch (InterruptedException | ExecutionException e) {
-            e.printStackTrace();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
         }
         NavigableMap<ByteBuffer, KeyInfo> index =
                 TableConverter.parseIndexBufferSparse(
@@ -143,7 +157,6 @@ public class Store implements Closeable {
     }
 
     private void compact() {
-
         int level = 0;
         while (levels.getLevel(level).size() - Math.pow(config.getFanout(), level + 1) > 0) {
             List<SST> sstablesToRemove = new ArrayList<>();
@@ -177,9 +190,9 @@ public class Store implements Closeable {
                                                 .collect(Collectors.toList())));
                 levels.addLevel(0, new Level0());
             } else {
-                int levelOferflow = (int) (levels.getLevel(level).size() - Math.pow(config.getFanout(), level + 1));
+                int levelOverflow = (int) (levels.getLevel(level).size() - Math.pow(config.getFanout(), level + 1));
 
-                for (int i = 0; i < levelOferflow; i++) {
+                for (int i = 0; i < levelOverflow; i++) {
                     int random = new Random().nextInt(currentLevel.size());
                     SST sstToRemove = currentLevel.getSstables().stream().skip(random).findFirst().get();
                     if (from == null) {
@@ -260,19 +273,16 @@ public class Store implements Closeable {
     @Override
     public void close() {
         try {
-            for (int i = 0; i < config.getMaxImmtableCount(); i++) {
-                semaphore.acquire();
-            }
+            for (int i = 0; i < config.getMaxImmtableCount(); i++) semaphore.acquire();
 
             memtablePusher.shutdown();
             memtablePusher.awaitTermination(1, TimeUnit.HOURS);
-
             fileWorker.shutdown();
             fileWorker.awaitTermination(1, TimeUnit.HOURS);
 
             metadata.close();
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            Thread.currentThread().interrupt();
         }
     }
 }

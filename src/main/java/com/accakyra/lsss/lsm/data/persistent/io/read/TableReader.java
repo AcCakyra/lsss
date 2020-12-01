@@ -9,13 +9,16 @@ import com.accakyra.lsss.lsm.data.persistent.sst.KeyInfo;
 import com.accakyra.lsss.lsm.data.persistent.sst.SST;
 import com.accakyra.lsss.lsm.io.FileReader;
 import com.accakyra.lsss.lsm.util.FileNameUtil;
+import lombok.extern.java.Log;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Log
 public class TableReader {
 
     public static Map<Integer, Level> readLevels(File data, Config config) {
@@ -55,11 +58,17 @@ public class TableReader {
         for (int id : tableIds) {
             Path indexFileName = FileNameUtil.buildIndexFileName(data.toPath(), id);
             Path sstFileName = FileNameUtil.buildSSTableFileName(data.toPath(), id);
-            ByteBuffer indexBuffer = FileReader.read(indexFileName);
-            int level = indexBuffer.getInt();
-            NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBufferSparse(
-                    indexBuffer, config.getMaxKeySize(), config.getSparseStep());
-            ssts.add(new SST(index, id, sstFileName, indexFileName, level));
+            try {
+                ByteBuffer indexBuffer = FileReader.read(indexFileName);
+                int level = indexBuffer.getInt();
+                NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBufferSparse(
+                        indexBuffer, config.getMaxKeySize(), config.getSparseStep());
+                ssts.add(new SST(index, id, sstFileName, indexFileName, level));
+            } catch (IOException e) {
+                log.log(java.util.logging.Level.SEVERE,
+                        "Cannot read sst and index with id : " + id + " from disk", e);
+                throw new RuntimeException(e);
+            }
         }
         return ssts;
     }

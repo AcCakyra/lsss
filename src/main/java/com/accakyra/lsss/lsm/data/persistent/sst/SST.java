@@ -4,13 +4,16 @@ import com.accakyra.lsss.Record;
 import com.accakyra.lsss.lsm.data.Resource;
 import com.accakyra.lsss.lsm.data.TableConverter;
 import com.accakyra.lsss.lsm.io.FileReader;
+import lombok.extern.java.Log;
 
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NavigableMap;
 
+@Log
 public class SST implements Resource {
 
     private final NavigableMap<ByteBuffer, KeyInfo> index;
@@ -103,12 +106,22 @@ public class SST implements Resource {
         int readTo = toKeyInfo.getIndexOffset() + toKeyInfo.getKeySize() + 12;
         int length = readTo - readFrom;
 
-        ByteBuffer buffer = FileReader.read(indexFileName, readFrom + 4, length);
-        return TableConverter.parseIndexBuffer(buffer);
+        try {
+            ByteBuffer buffer = FileReader.read(indexFileName, readFrom + 4, length);
+            return TableConverter.parseIndexBuffer(buffer);
+        } catch (IOException e) {
+            log.log(java.util.logging.Level.SEVERE, "Cannot read index file : " + indexFileName.toString(), e);
+            throw new RuntimeException(e);
+        }
     }
 
     private Record get(ByteBuffer key, KeyInfo info) {
-        ByteBuffer value = FileReader.read(sstFileName, info.getSstOffset(), info.getValueSize());
-        return new Record(key, value);
+        try {
+            ByteBuffer value = FileReader.read(sstFileName, info.getSstOffset(), info.getValueSize());
+            return new Record(key, value);
+        } catch (IOException e) {
+            log.log(java.util.logging.Level.SEVERE, "Cannot read sst file : " + sstFileName.toString(), e);
+            throw new RuntimeException(e);
+        }
     }
 }
