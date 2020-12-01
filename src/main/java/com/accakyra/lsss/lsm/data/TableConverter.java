@@ -5,8 +5,11 @@ import com.accakyra.lsss.Config;
 import com.accakyra.lsss.lsm.data.memory.Memtable;
 import com.accakyra.lsss.lsm.data.persistent.sst.KeyInfo;
 import com.accakyra.lsss.lsm.data.persistent.io.Table;
+import com.accakyra.lsss.lsm.data.persistent.sst.SST;
+import com.accakyra.lsss.lsm.util.FileNameUtil;
 
 import java.nio.ByteBuffer;
+import java.nio.file.Path;
 import java.util.Iterator;
 import java.util.NavigableMap;
 import java.util.TreeMap;
@@ -60,6 +63,15 @@ public class TableConverter {
 
     public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBuffer(ByteBuffer indexBuffer) {
         return parseIndexBufferSparse(indexBuffer, Integer.MAX_VALUE, 1);
+    }
+
+    public static SST convertTableToSST(Table table, int tableId, int level, Path storage,
+                                        int maxKeySize, int sparseStep) {
+        NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBufferSparse(
+                table.getIndexBuffer().position(4), maxKeySize, sparseStep);
+        Path sstFileName = FileNameUtil.buildSSTableFileName(storage, tableId);
+        Path indexFileName = FileNameUtil.buildIndexFileName(storage, tableId);
+        return new SST(index, tableId, sstFileName, indexFileName, level);
     }
 
     public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBufferSparse(
