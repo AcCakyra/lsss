@@ -30,7 +30,7 @@ public class Memtable implements Resource {
         return null;
     }
 
-    private Record get(VersionedKey key) {
+    public Record get(VersionedKey key) {
         ByteBuffer value = memtable.get(key);
         if (value != null) {
             return new Record(key.getKey(), value);
@@ -81,10 +81,9 @@ public class Memtable implements Resource {
         VersionedKey toKey = null;
         if (to != null) toKey = new VersionedKey(to, snapshot);
 
-        Iterator<Record> iterator = Iterators.transform(
-                IteratorsUtil.navigableIterator(memtable.navigableKeySet(), fromKey, toKey),
-                this::get);
-
+        Iterator<VersionedKey> navigableIterator =
+                IteratorsUtil.navigableIterator(memtable.navigableKeySet(), fromKey, toKey);
+        Iterator<Record> iterator = Iterators.transform(navigableIterator, this::get);
         return IteratorsUtil.distinctIterator(iterator);
     }
 }
