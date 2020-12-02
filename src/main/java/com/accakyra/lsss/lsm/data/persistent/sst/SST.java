@@ -10,7 +10,6 @@ import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
 import java.util.Iterator;
-import java.util.Map;
 import java.util.NavigableMap;
 
 @Log
@@ -30,26 +29,15 @@ public class SST implements Resource {
         this.level = level;
     }
 
-    public int getId() {
-        return id;
-    }
-
-    public int getLevel() {
-        return level;
-    }
-
     @Override
     public Record get(ByteBuffer key) {
         if (key.compareTo(firstKey()) < 0) return null;
         if (index.get(key) != null) return get(key, index.get(key));
 
-        NavigableMap<ByteBuffer, KeyInfo> candidateMap = loadIndex(key, key);
-        for (Map.Entry<ByteBuffer, KeyInfo> candidate : candidateMap.entrySet()) {
-            if (candidate.getKey().equals(key)) {
-                return get(candidate.getKey(), candidate.getValue());
-            }
-        }
-        return null;
+        ByteBuffer indexBuffer = loadIndex(key, key);
+        KeyInfo info = TableConverter.extractInfoFromIndexBuffer(indexBuffer, key);
+        if (info != null) return get(key, info);
+        else return null;
     }
 
     public ByteBuffer firstKey() {
@@ -58,6 +46,14 @@ public class SST implements Resource {
 
     public ByteBuffer lastKey() {
         return index.lastKey();
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public int getLevel() {
+        return level;
     }
 
     @Override
@@ -82,7 +78,8 @@ public class SST implements Resource {
         ByteBuffer toKey = index.ceilingKey(to);
         if (toKey == null) toKey = index.lastKey();
 
-        return loadIndex(fromKey, toKey)
+        ByteBuffer indexBuffer = loadIndex(fromKey, toKey);
+        return TableConverter.parseIndexBuffer(indexBuffer)
                 .entrySet()
                 .stream()
                 .map(entry -> get(entry.getKey(), entry.getValue()))
@@ -94,7 +91,7 @@ public class SST implements Resource {
                 .iterator();
     }
 
-    private NavigableMap<ByteBuffer, KeyInfo> loadIndex(ByteBuffer from, ByteBuffer to) {
+    private ByteBuffer loadIndex(ByteBuffer from, ByteBuffer to) {
         ByteBuffer fromKey = index.floorKey(from);
         ByteBuffer toKey = index.ceilingKey(to);
 
@@ -107,8 +104,7 @@ public class SST implements Resource {
         int length = readTo - readFrom;
 
         try {
-            ByteBuffer buffer = FileReader.read(indexFileName, readFrom + 4, length);
-            return TableConverter.parseIndexBuffer(buffer);
+            return FileReader.read(indexFileName, readFrom + 4, length);
         } catch (IOException e) {
             log.log(java.util.logging.Level.SEVERE, "Cannot read index file : " + indexFileName.toString(), e);
             throw new RuntimeException(e);

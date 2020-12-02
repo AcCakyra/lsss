@@ -49,9 +49,10 @@ public class TableConverter {
 
             valueOffset += key.capacity();
             indexBuffer.putInt(key.capacity());
-            indexBuffer.put(key);
             indexBuffer.putInt(valueOffset);
             indexBuffer.putInt(value.capacity());
+            indexBuffer.put(key);
+
             valueOffset += value.capacity();
         }
 
@@ -61,12 +62,8 @@ public class TableConverter {
         return new Table(indexBuffer, sstBuffer);
     }
 
-    public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBuffer(ByteBuffer indexBuffer) {
-        return parseIndexBufferSparse(indexBuffer, Integer.MAX_VALUE, 1);
-    }
-
-    public static SST convertTableToSST(Table table, int tableId, int level, Path storage,
-                                        int maxKeySize, int sparseStep) {
+    public static SST convertTableToSST(Table table, int tableId, int level,
+                                        Path storage, int maxKeySize, int sparseStep) {
         NavigableMap<ByteBuffer, KeyInfo> index = TableConverter.parseIndexBufferSparse(
                 table.getIndexBuffer().position(4), maxKeySize, sparseStep);
         Path sstFileName = FileNameUtil.buildSSTableFileName(storage, tableId);
@@ -83,20 +80,69 @@ public class TableConverter {
         int keyOffset = 0;
         while (indexBuffer.hasRemaining()) {
             int keySize = indexBuffer.getInt();
-            byte[] key = new byte[keySize];
-            indexBuffer.get(key);
-            ByteBuffer keyBuffer = ByteBuffer.wrap(key);
             int valueOffset = indexBuffer.getInt();
             int valueSize = indexBuffer.getInt();
-            if (keysCounter++ % sparseStep == 0 || !indexBuffer.hasRemaining()) {
+
+            if (keysCounter++ % sparseStep == 0 || indexBuffer.position() + keySize == indexBuffer.limit()) {
+                ByteBuffer keyBuffer;
                 if (keySize > maxKeySize) {
-                    keyBuffer = ByteBuffer.wrap(keyBuffer.limit(maxKeySize).array());
+                    byte[] key = new byte[maxKeySize];
+                    indexBuffer.get(key);
+                    keyBuffer = ByteBuffer.wrap(key);
+                    indexBuffer.position(indexBuffer.position() + keySize - maxKeySize);
+                } else {
+                    byte[] key = new byte[keySize];
+                    indexBuffer.get(key);
+                    keyBuffer = ByteBuffer.wrap(key);
                 }
                 keys.put(keyBuffer, new KeyInfo(keyOffset, valueOffset, keySize, valueSize));
+            } else {
+                indexBuffer.position(indexBuffer.position() + keySize);
             }
+
             keyOffset += 12;
             keyOffset += keySize;
         }
         return keys;
+    }
+
+    public static NavigableMap<ByteBuffer, KeyInfo> parseIndexBuffer(ByteBuffer indexBuffer) {
+        NavigableMap<ByteBuffer, KeyInfo> keys = new TreeMap<>();
+
+        int keyOffset = 0;
+        while (indexBuffer.hasRemaining()) {
+            int keySize = indexBuffer.getInt();
+            int valueOffset = indexBuffer.getInt();
+            int valueSize = indexBuffer.getInt();
+
+            byte[] key = new byte[keySize];
+            indexBuffer.get(key);
+            ByteBuffer keyBuffer = ByteBuffer.wrap(key);
+            keys.put(keyBuffer, new KeyInfo(keyOffset, valueOffset, keySize, valueSize));
+
+            keyOffset += 12;
+            keyOffset += keySize;
+        }
+
+        return keys;
+    }
+
+    public static KeyInfo extractInfoFromIndexBuffer(ByteBuffer indexBuffer, ByteBuffer key) {
+        int keyOffset = 0;
+
+        while (indexBuffer.hasRemaining()) {
+            int keySize = indexBuffer.getInt();
+            int valueOffset = indexBuffer.getInt();
+            int valueSize = indexBuffer.getInt();
+            byte[] byteKey = new byte[keySize];
+            indexBuffer.get(byteKey);
+            ByteBuffer keyBuffer = ByteBuffer.wrap(byteKey);
+
+            if (keyBuffer.equals(key)) return new KeyInfo(keyOffset, valueOffset, keySize, valueSize);
+
+            keyOffset += 12;
+            keyOffset += keySize;
+        }
+        return null;
     }
 }
