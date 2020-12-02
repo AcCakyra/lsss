@@ -9,8 +9,11 @@ import lombok.extern.java.Log;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.Iterator;
 import java.util.NavigableMap;
+import java.util.Objects;
+import java.util.stream.Collectors;
 
 @Log
 public class SST implements Resource {
@@ -35,9 +38,10 @@ public class SST implements Resource {
         if (index.get(key) != null) return get(key, index.get(key));
 
         ByteBuffer indexBuffer = loadIndex(key, key);
+        if (indexBuffer == null) return null;
         KeyInfo info = TableConverter.extractInfoFromIndexBuffer(indexBuffer, key);
-        if (info != null) return get(key, info);
-        else return null;
+        if (info == null) return null;
+        return get(key, info);
     }
 
     public ByteBuffer firstKey() {
@@ -79,10 +83,13 @@ public class SST implements Resource {
         if (toKey == null) toKey = index.lastKey();
 
         ByteBuffer indexBuffer = loadIndex(fromKey, toKey);
+        if (indexBuffer == null) return Collections.emptyIterator();
+
         return TableConverter.parseIndexBuffer(indexBuffer)
                 .entrySet()
                 .stream()
                 .map(entry -> get(entry.getKey(), entry.getValue()))
+                .filter(Objects::nonNull)
                 .filter(record -> record.getKey().compareTo(from) >= 0)
                 .filter(record -> {
                     int compare = record.getKey().compareTo(to);
@@ -107,7 +114,7 @@ public class SST implements Resource {
             return FileReader.read(indexFileName, readFrom + 4, length);
         } catch (IOException e) {
             log.log(java.util.logging.Level.SEVERE, "Cannot read index file : " + indexFileName.toString(), e);
-            throw new RuntimeException(e);
+            return null;
         }
     }
 
@@ -117,7 +124,7 @@ public class SST implements Resource {
             return new Record(key, value);
         } catch (IOException e) {
             log.log(java.util.logging.Level.SEVERE, "Cannot read sst file : " + sstFileName.toString(), e);
-            throw new RuntimeException(e);
+            return null;
         }
     }
 }

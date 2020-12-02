@@ -67,7 +67,6 @@ public class TableReader {
             } catch (IOException e) {
                 log.log(java.util.logging.Level.SEVERE,
                         "Cannot read sst and index with id : " + id + " from disk", e);
-                throw new RuntimeException(e);
             }
         }
         return ssts;

@@ -20,7 +20,6 @@ public class TableWriter {
         } catch (IOException e) {
             log.log(java.util.logging.Level.SEVERE,
                     "Cannot write table with id : " + tableId + " to " + storagePath.toString(), e);
-            throw new RuntimeException(e);
         }
     }
 }

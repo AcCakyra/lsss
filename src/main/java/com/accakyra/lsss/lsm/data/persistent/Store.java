@@ -82,9 +82,7 @@ public class Store implements Closeable {
                     Files.deleteIfExists(FileNameUtil.buildIndexFileName(storage, id));
                     Files.deleteIfExists(FileNameUtil.buildSSTableFileName(storage, id));
                 } catch (IOException e) {
-                    log.log(java.util.logging.Level.SEVERE,
-                            "Cannot delete sst and index with id : " + id + " from disk", e);
-                    throw new RuntimeException(e);
+                    log.log(java.util.logging.Level.SEVERE, "Cannot delete sst and index with id : " + id + " from disk", e);
                 }
             }
             fileLock.writeLock().unlock();
@@ -176,7 +174,7 @@ public class Store implements Closeable {
                                                 .collect(Collectors.toList())));
                 levels.addLevel(0, new Level0());
             } else {
-                int levelOverflow = (int) (levels.getLevel(level).size() - calcMaxLevelSize(level));
+                int levelOverflow = levels.getLevel(level).size() - calcMaxLevelSize(level);
 
                 for (int i = 0; i < levelOverflow; i++) {
                     int random = new Random().nextInt(currentLevel.size());
