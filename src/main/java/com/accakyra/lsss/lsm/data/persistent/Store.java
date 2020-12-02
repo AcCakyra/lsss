@@ -53,7 +53,7 @@ public class Store implements Closeable {
                     storage, config.getMaxKeySize(), config.getSparseStep());
 
             levelsLock.writeLock().lock();
-            Level newZeroLevel = levels.getLevel(0);
+            Level newZeroLevel = levels.getLevel(0).copy();
             newZeroLevel.add(sst);
             levels.addLevel(0, newZeroLevel);
             levels.deleteImmtable(sst.getId());
