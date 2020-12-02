@@ -65,8 +65,35 @@ public class Store implements Closeable {
         }
     }
 
+    private class RemoveFilesTask implements Runnable {
+
+        private final List<SST> sstablesToRemove;
+
+        public RemoveFilesTask(List<SST> sstablesToRemove) {
+            this.sstablesToRemove = sstablesToRemove;
+        }
+
+        @Override
+        public void run() {
+            fileLock.writeLock().lock();
+            for (SST sst : sstablesToRemove) {
+                int id = sst.getId();
+                try {
+                    Files.deleteIfExists(FileNameUtil.buildIndexFileName(storage, id));
+                    Files.deleteIfExists(FileNameUtil.buildSSTableFileName(storage, id));
+                } catch (IOException e) {
+                    log.log(java.util.logging.Level.SEVERE,
+                            "Cannot delete sst and index with id : " + id + " from disk", e);
+                    throw new RuntimeException(e);
+                }
+            }
+            fileLock.writeLock().unlock();
+        }
+    }
+
     private final Levels levels;
     private final ExecutorService memtablePusher;
+    private final ExecutorService fileWorker;
     private final Semaphore semaphore;
     private final ReadWriteLock fileLock;
     private final ReadWriteLock levelsLock;
@@ -77,6 +104,7 @@ public class Store implements Closeable {
     public Store(File data, ReadWriteLock fileLock, Config config) {
         this.levels = new Levels(TableReader.readLevels(data, config));
         this.memtablePusher = Executors.newSingleThreadExecutor();
+        this.fileWorker = Executors.newSingleThreadExecutor();
         this.metadata = new Metadata(data);
         this.semaphore = new Semaphore(config.getMaxImmtableCount());
         this.fileLock = fileLock;
@@ -225,27 +253,11 @@ public class Store implements Closeable {
                 }
             }
 
-            removeSSTablesFromDisk(sstablesToRemove);
+            fileWorker.submit(new RemoveFilesTask(sstablesToRemove));
 
             levels.addLevel(level + 1, newNextLevel);
             level++;
         }
-    }
-
-    private void removeSSTablesFromDisk(List<SST> sstablesToRemove) {
-        fileLock.writeLock().lock();
-        for (SST sst : sstablesToRemove) {
-            int id = sst.getId();
-            try {
-                Files.deleteIfExists(FileNameUtil.buildIndexFileName(storage, id));
-                Files.deleteIfExists(FileNameUtil.buildSSTableFileName(storage, id));
-            } catch (IOException e) {
-                log.log(java.util.logging.Level.SEVERE,
-                        "Cannot delete sst and index with id : " + id + " from disk", e);
-                throw new RuntimeException(e);
-            }
-        }
-        fileLock.writeLock().unlock();
     }
 
     private int calcMaxLevelSize(int level) {
@@ -258,6 +270,8 @@ public class Store implements Closeable {
             for (int i = 0; i < config.getMaxImmtableCount(); i++) semaphore.acquire();
             memtablePusher.shutdown();
             memtablePusher.awaitTermination(1, TimeUnit.HOURS);
+            fileWorker.shutdown();
+            fileWorker.awaitTermination(1, TimeUnit.HOURS);
             metadata.close();
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
