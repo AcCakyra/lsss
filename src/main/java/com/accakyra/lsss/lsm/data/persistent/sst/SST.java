@@ -9,11 +9,7 @@ import lombok.extern.java.Log;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.file.Path;
-import java.util.Collections;
-import java.util.Iterator;
-import java.util.NavigableMap;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.*;
 
 @Log
 public class SST implements Resource {
@@ -37,11 +33,10 @@ public class SST implements Resource {
         if (key.compareTo(firstKey()) < 0) return null;
         if (index.get(key) != null) return get(key, index.get(key));
 
-        ByteBuffer indexBuffer = loadIndex(key, key);
-        if (indexBuffer == null) return null;
-        KeyInfo info = TableConverter.extractInfoFromIndexBuffer(indexBuffer, key);
-        if (info == null) return null;
-        return get(key, info);
+        return Optional.ofNullable(loadIndex(key, key))
+                .map(index -> TableConverter.extractInfoFromIndexBuffer(index, key))
+                .map(info -> get(key, info))
+                .orElse(null);
     }
 
     public ByteBuffer firstKey() {
